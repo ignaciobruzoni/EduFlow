@@ -14,7 +14,7 @@
    Si se deja vacío, la app habilita un acceso alternativo por email
    (útil para desarrollo y para probar sin credenciales).
 */
-export const GOOGLE_CLIENT_ID = window.EDUFLOW_GOOGLE_CLIENT_ID || '';
+export const GOOGLE_CLIENT_ID = '63692570401-i3qkg2s4pk98ig0b4cjh7dsh2qnto29p.apps.googleusercontent.com' || window.EDUFLOW_GOOGLE_CLIENT_ID;
 
 /** Único dominio institucional habilitado para ingresar. */
 export const DOMINIO_PERMITIDO = 'colegiosantaethnea.com.ar';
