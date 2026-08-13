@@ -54,22 +54,22 @@ export const MODALIDADES_SUPERIOR = [
  * Reemplazá los "completar" por las materias reales de cada curso.
  */
 export const MATERIAS_CONFIG = {
-  '1_A': ['Matemática', 'Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'completar'],
-  '1_B': ['Matemática', 'Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'completar'],
-  '2_A': ['completar'],
-  '2_B': ['completar'],
-  '3_A': ['completar'],
-  '3_B': ['completar'],
-  '4_Economia': ['Economía Política', 'Matemática', 'completar'],
-  '4_Sociales': ['Sociología', 'Historia', 'completar'],
-  '5_Economia': ['completar'],
+  '1_A': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
+  '1_B': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
+  '2_A': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
+  '2_B': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
+  '3_A': ['Biología', 'Físico-Química', 'Historia', 'Geografía', 'Prácticas del Lenguaje', 'Ciudadanía', 'Plástica', 'Música'],
+  '3_B': ['Biología', 'Físico-Química', 'Historia', 'Geografía', 'Prácticas del Lenguaje', 'Ciudadanía', 'Plástica', 'Música'],
+  '4_Economia': ['Biología', 'Física', 'Historia', 'Geografía', 'Literatura', 'Ciudadanía', 'S.I.C.', 'Teoría de las Org.'],
+  '4_Sociales': ['Biología', 'Física', 'Historia', 'Geografía', 'Literatura', 'Ciudadanía', "Psicología"],
+  '5_Economia': ['Química', 'Historia', 'Geografía', 'Literatura', 'Política y Ciud.', 'S.I.C.', 'Micro y Macro', 'Derecho'],
   '5_Sociales': ['completar'],
-  '6_Economia': ['completar'],
+  '6_Economia': ['Literatura', 'Trabajo y Ciud', 'Proyecto Org. (Naty)', 'Proyecto Org. (Majo)', 'Filosofía', 'Arte', 'Econ. Política'],
   '6_Sociales': ['completar']
 };
 
 /** Materias comunes que se agregan a todos los cursos (editable). */
-export const MATERIAS_COMUNES = ['Educación Física', 'Inglés'];
+export const MATERIAS_COMUNES = ['Educación Física', 'Inglés', 'Matemática', 'Catequesis'];
 
 /* ============================================================
    3. TIPOS DE EVENTO
