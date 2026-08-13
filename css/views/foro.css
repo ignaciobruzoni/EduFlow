@@ -1,0 +1,63 @@
+/* ============================================================
+   foro.css — Canales, hilos y respuestas
+   ============================================================ */
+
+.foro-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+
+/* Canales (cursos) */
+.canales { display: flex; flex-direction: column; gap: 2px; position: sticky; top: calc(var(--header-h) + var(--sp-4)); }
+.canales__titulo { font-size: var(--fs-xs); font-weight: 700; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--sp-2) var(--sp-3); }
+.canal {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 9px var(--sp-3); border-radius: var(--r-md);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--texto-2); text-align: left; width: 100%;
+}
+.canal:hover { background: var(--superficie-hover); color: var(--texto); }
+.canal.is-active { background: var(--acento-suave); color: var(--acento-fuerte); }
+.canal__hash { color: var(--texto-3); font-weight: 700; }
+.canal.is-active .canal__hash { color: var(--acento); }
+.canal__nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.canal__cuenta { font-size: var(--fs-xs); color: var(--texto-3); font-weight: 700; }
+.canal--propio .canal__nombre::after { content: " · tu curso"; color: var(--texto-3); font-weight: 500; font-size: var(--fs-xs); }
+
+/* Hilos */
+.hilos { display: flex; flex-direction: column; gap: var(--sp-3); }
+.hilo {
+  background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: var(--r-lg); padding: var(--sp-4); box-shadow: var(--sombra-sm);
+}
+.hilo.esta-fijado { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento-suave), var(--sombra-sm); }
+.hilo__head { display: flex; align-items: flex-start; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.hilo__avatar { width: 36px; height: 36px; border-radius: 50%; flex: 0 0 auto; background: var(--acento-suave); object-fit: cover; }
+.hilo__autor { font-size: var(--fs-sm); font-weight: 700; }
+.hilo__meta { font-size: var(--fs-xs); color: var(--texto-3); display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+.hilo__titulo { font-size: var(--fs-lg); margin-bottom: var(--sp-2); }
+.hilo__cuerpo { color: var(--texto-2); font-size: var(--fs-sm); white-space: pre-wrap; margin-bottom: var(--sp-3); }
+.hilo__acciones { display: flex; align-items: center; gap: var(--sp-2); padding-top: var(--sp-3); border-top: 1px solid var(--borde); }
+
+.accion {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: var(--r-full);
+  font-size: var(--fs-xs); font-weight: 650; color: var(--texto-3);
+}
+.accion:hover { background: var(--superficie-hover); color: var(--texto); }
+.accion.is-active { color: var(--acento-fuerte); background: var(--acento-suave); }
+.accion svg { width: 15px; height: 15px; }
+
+/* Respuestas */
+.respuestas { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); padding-left: var(--sp-4); border-left: 2px solid var(--borde); }
+.respuesta { display: flex; gap: var(--sp-3); }
+.respuesta__avatar { width: 28px; height: 28px; border-radius: 50%; flex: 0 0 auto; background: var(--acento-suave); object-fit: cover; }
+.respuesta__burbuja { background: var(--superficie-2); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); flex: 1; min-width: 0; }
+.respuesta__autor { font-size: var(--fs-xs); font-weight: 700; }
+.respuesta__texto { font-size: var(--fs-sm); color: var(--texto-2); white-space: pre-wrap; }
+.respuesta__fecha { font-size: var(--fs-xs); color: var(--texto-3); }
+
+.responder { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+.responder__input { flex: 1; }
+
+/* Composer */
+.composer { display: flex; gap: var(--sp-3); align-items: center; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--r-lg); padding: var(--sp-3); box-shadow: var(--sombra-sm); margin-bottom: var(--sp-4); }
+.composer__avatar { width: 36px; height: 36px; border-radius: 50%; flex: 0 0 auto; object-fit: cover; background: var(--acento-suave); }
+.composer__fake { flex: 1; text-align: left; color: var(--texto-3); font-size: var(--fs-sm); padding: 9px var(--sp-3); border-radius: var(--r-full); background: var(--superficie-2); }
+.composer__fake:hover { background: var(--superficie-hover); }

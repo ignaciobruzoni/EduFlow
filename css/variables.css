@@ -1,0 +1,122 @@
+/* ============================================================
+   variables.css — Design tokens y sistema de temas
+   ============================================================ */
+
+:root {
+  /* --- Paleta de acento (verde agua / turquesa) --- */
+  --acento: #20b2aa;
+  --acento-fuerte: #00a896;
+  --acento-turquesa: #00c49f;
+  --acento-contraste: #ffffff;
+  --acento-suave: rgba(32, 178, 170, 0.12);
+  --acento-suave-hover: rgba(32, 178, 170, 0.2);
+
+  /* --- Colores de estado de eventos --- */
+  --tarea: #ff9f1c;
+  --tarea-suave: rgba(255, 159, 28, 0.14);
+  --examen: #e63946;
+  --examen-suave: rgba(230, 57, 70, 0.14);
+  --feriado: #2a9d8f;
+  --feriado-suave: rgba(42, 157, 143, 0.14);
+
+  /* --- Semánticos --- */
+  --exito: #2a9d8f;
+  --alerta: #ff9f1c;
+  --error: #e63946;
+  --info: #20b2aa;
+
+  /* --- Superficies (modo claro por defecto) --- */
+  --fondo: #ffffff;
+  --fondo-alt: #f8f9fa;
+  --superficie: #ffffff;
+  --superficie-2: #f8f9fa;
+  --superficie-3: #eef1f4;
+  --superficie-hover: #f1f3f5;
+  --borde: #e2e6ea;
+  --borde-fuerte: #ced4da;
+
+  /* --- Texto --- */
+  --texto: #212529;
+  --texto-2: #495057;
+  --texto-3: #6c757d;
+  --texto-invertido: #ffffff;
+
+  /* --- Sombras --- */
+  --sombra-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --sombra-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --sombra-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+  --sombra-acento: 0 6px 18px rgba(0, 168, 150, 0.28);
+
+  /* --- Tipografía --- */
+  --fuente: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.82rem;
+  --fs-md: 0.94rem;
+  --fs-lg: 1.08rem;
+  --fs-xl: 1.35rem;
+  --fs-2xl: 1.75rem;
+
+  /* --- Espaciado --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* --- Radios --- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-full: 999px;
+
+  /* --- Layout --- */
+  --sidebar-w: 248px;
+  --sidebar-w-colapsada: 72px;
+  --header-h: 68px;
+
+  /* --- Movimiento --- */
+  --trans-tema: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  --trans-rapida: 0.16s ease;
+  --trans-media: 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --z-sidebar: 40;
+  --z-header: 30;
+  --z-fab: 35;
+  --z-modal: 60;
+  --z-toast: 70;
+}
+
+/* ============ MODO OSCURO ============ */
+:root[data-theme="dark"] {
+  --fondo: #121212;
+  --fondo-alt: #171717;
+  --superficie: #1e1e1e;
+  --superficie-2: #242424;
+  --superficie-3: #2c2c2c;
+  --superficie-hover: #2a2a2a;
+  --borde: #333333;
+  --borde-fuerte: #454545;
+
+  --texto: #e0e0e0;
+  --texto-2: #b9b9b9;
+  --texto-3: #8d8d8d;
+
+  --acento-suave: rgba(32, 178, 170, 0.18);
+  --acento-suave-hover: rgba(32, 178, 170, 0.28);
+  --tarea-suave: rgba(255, 159, 28, 0.18);
+  --examen-suave: rgba(230, 57, 70, 0.2);
+  --feriado-suave: rgba(42, 157, 143, 0.2);
+
+  --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sombra-md: 0 4px 14px rgba(0, 0, 0, 0.55);
+  --sombra-lg: 0 16px 40px rgba(0, 0, 0, 0.65);
+  --sombra-acento: 0 6px 18px rgba(0, 168, 150, 0.25);
+}
+
+/* Colores por tipo de evento reutilizables como clases utilitarias */
+.color-tarea { --color-evento: var(--tarea); --color-evento-suave: var(--tarea-suave); }
+.color-examen { --color-evento: var(--examen); --color-evento-suave: var(--examen-suave); }
+.color-feriado { --color-evento: var(--feriado); --color-evento-suave: var(--feriado-suave); }

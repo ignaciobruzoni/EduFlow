@@ -1,0 +1,25 @@
+{
+  "name": "EduFlow · Portal de Alumnos Santa Ethnea",
+  "short_name": "EduFlow",
+  "description": "Calendario de exámenes y tareas, historial académico, foro entre cursos y productividad semanal para alumnos del Colegio Santa Ethnea.",
+  "lang": "es-AR",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F8F9FA",
+  "theme_color": "#20B2AA",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "./assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "./assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Calendario", "url": "./index.html#/calendario" },
+    { "name": "Historial", "url": "./index.html#/historial" },
+    { "name": "Foro", "url": "./index.html#/foro" }
+  ]
+}

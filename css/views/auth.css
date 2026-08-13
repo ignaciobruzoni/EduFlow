@@ -1,0 +1,58 @@
+/* ============================================================
+   auth.css — Pantallas de login y onboarding
+   ============================================================ */
+
+.auth {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-5);
+  background:
+    radial-gradient(900px 500px at 12% -8%, var(--acento-suave), transparent 62%),
+    radial-gradient(700px 420px at 92% 108%, rgba(0, 196, 159, 0.14), transparent 60%),
+    var(--fondo-alt);
+}
+
+.auth__panel {
+  width: min(440px, 100%);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sombra-lg);
+  padding: var(--sp-6);
+  animation: aparecer 0.3s ease;
+}
+.auth__panel--wide { width: min(620px, 100%); }
+
+.auth__brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.auth__logo {
+  width: 48px; height: 48px; flex: 0 0 auto; display: grid; place-items: center;
+  border-radius: var(--r-md); color: #fff; font-weight: 800; font-size: 1.4rem;
+  background: linear-gradient(135deg, var(--acento), var(--acento-turquesa));
+  box-shadow: var(--sombra-acento);
+}
+.auth__title { font-size: var(--fs-2xl); letter-spacing: -0.03em; }
+.auth__subtitle { font-size: var(--fs-sm); color: var(--texto-3); }
+.auth__lead { color: var(--texto-2); font-size: var(--fs-sm); margin-bottom: var(--sp-5); }
+
+.auth__google { display: flex; justify-content: center; min-height: 44px; }
+.auth__divider { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-5) 0; color: var(--texto-3); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; }
+.auth__divider::before, .auth__divider::after { content: ""; height: 1px; background: var(--borde); flex: 1; }
+
+.auth__form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.auth__actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-5); }
+
+.auth__error {
+  margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md); background: var(--examen-suave); color: var(--examen);
+  font-size: var(--fs-sm); font-weight: 600; border-left: 3px solid var(--examen);
+}
+.auth__legal { margin-top: var(--sp-5); font-size: var(--fs-xs); color: var(--texto-3); text-align: center; }
+
+/* Vista previa de materias en el onboarding */
+.onb-preview { padding: var(--sp-4); border-radius: var(--r-lg); background: var(--superficie-2); border: 1px dashed var(--borde-fuerte); }
+.onb-preview__title { font-size: var(--fs-sm); color: var(--texto-2); margin-bottom: var(--sp-3); }
+.onb-preview__list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.onb-preview__list li { padding: 4px 10px; border-radius: var(--r-full); background: var(--acento-suave); color: var(--acento-fuerte); font-size: var(--fs-xs); font-weight: 650; }
+.onb-preview__list li.es-placeholder { background: var(--superficie-3); color: var(--texto-3); font-style: italic; }
