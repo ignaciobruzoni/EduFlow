@@ -1,0 +1,43 @@
+/* ============================================================
+   historial.css — Estadísticas, filtros y línea de tiempo
+   ============================================================ */
+
+.hist-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.stat--tarea .stat__valor { color: var(--tarea); }
+.stat--examen .stat__valor { color: var(--examen); }
+.stat--feriado .stat__valor { color: var(--feriado); }
+.stat--acento .stat__valor { color: var(--acento-fuerte); }
+
+.hist-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--sp-4); align-items: start; }
+
+/* Línea de tiempo agrupada por mes */
+.timeline { display: flex; flex-direction: column; gap: var(--sp-5); }
+.timeline__mes { display: flex; flex-direction: column; gap: var(--sp-3); }
+.timeline__titulo {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--texto-3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: var(--sp-3);
+}
+.timeline__titulo::after { content: ""; flex: 1; height: 1px; background: var(--borde); }
+.timeline__items { display: flex; flex-direction: column; gap: var(--sp-2); position: relative; padding-left: var(--sp-5); }
+.timeline__items::before { content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--borde); border-radius: var(--r-full); }
+.timeline__punto {
+  position: absolute; left: 0; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--superficie); border: 3px solid var(--color-evento, var(--borde-fuerte));
+}
+.timeline__fila { position: relative; }
+
+/* Rendimiento por materia */
+.materia-stat { display: flex; flex-direction: column; gap: 5px; padding: var(--sp-2) 0; }
+.materia-stat__head { display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-sm); }
+.materia-stat__nombre { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.materia-stat__valor { color: var(--texto-3); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+
+/* Filtros */
+.filtros { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.filtros__label { font-size: var(--fs-xs); font-weight: 700; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.05em; }

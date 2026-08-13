@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Portal de alumnos del Colegio Santa Ethnea: calendario de exámenes y tareas, historial académico, foro entre cursos y productividad semanal." />
+  <meta name="theme-color" content="#20B2AA" />
+  <title>EduFlow · Colegio Santa Ethnea</title>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
+
+  <!-- Hoja de estilos modular (cada archivo tiene una única responsabilidad) -->
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/layout.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/views/auth.css" />
+  <link rel="stylesheet" href="./css/views/calendario.css" />
+  <link rel="stylesheet" href="./css/views/historial.css" />
+  <link rel="stylesheet" href="./css/views/foro.css" />
+  <link rel="stylesheet" href="./css/responsive.css" />
+
+  <!-- Evita el "flash" de tema claro antes de que arranquen los módulos ES6 -->
+  <script>
+    (function () {
+      try {
+        var pref = localStorage.getItem('eduflow.theme');
+        var theme = pref || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { /* almacenamiento bloqueado: se usa el tema por defecto */ }
+    })();
+  </script>
+
+  <!-- Google Identity Services (login con Google) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#vista-principal">Saltar al contenido principal</a>
+
+  <!-- ============ PANTALLA DE CARGA ============ -->
+  <div id="splash" class="splash" role="status" aria-live="polite">
+    <div class="splash__logo" aria-hidden="true">E</div>
+    <p class="splash__text">Cargando EduFlow…</p>
+  </div>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="pantalla-login" class="auth hidden" aria-labelledby="auth-titulo">
+    <div class="auth__panel">
+      <div class="auth__brand">
+        <div class="auth__logo" aria-hidden="true">E</div>
+        <div>
+          <h1 id="auth-titulo" class="auth__title">EduFlow</h1>
+          <p class="auth__subtitle">Portal de Alumnos · Colegio Santa Ethnea</p>
+        </div>
+      </div>
+
+      <p class="auth__lead">
+        Coordiná exámenes y tareas con tu curso, consultá el historial y participá del foro.
+        Ingresá con tu cuenta institucional.
+      </p>
+
+      <div id="google-btn" class="auth__google"></div>
+
+      <div id="auth-fallback" class="auth__fallback hidden">
+        <div class="auth__divider"><span>acceso alternativo</span></div>
+        <form id="form-login-demo" class="auth__form" novalidate>
+          <label class="field">
+            <span class="field__label">Email institucional</span>
+            <input
+              type="email"
+              id="input-email-demo"
+              class="field__input"
+              placeholder="nombre.apellido@colegiosantaethnea.com.ar"
+              autocomplete="email"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field__label">Nombre y apellido</span>
+            <input type="text" id="input-nombre-demo" class="field__input" placeholder="Ej: Lucía Fernández" autocomplete="name" required />
+          </label>
+          <button type="submit" class="btn btn--primary btn--block">Ingresar</button>
+        </form>
+      </div>
+
+      <p id="auth-error" class="auth__error hidden" role="alert"></p>
+
+      <p class="auth__legal">
+        Sólo se permite el acceso con correos <strong>@colegiosantaethnea.com.ar</strong>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ ONBOARDING ============ -->
+  <section id="pantalla-onboarding" class="auth hidden" aria-labelledby="onb-titulo">
+    <div class="auth__panel auth__panel--wide">
+      <h2 id="onb-titulo" class="auth__title">Configuración inicial</h2>
+      <p class="auth__lead">Contanos en qué curso estás para mostrarte las materias y eventos correctos.</p>
+
+      <form id="form-onboarding" novalidate>
+        <fieldset class="fieldset">
+          <legend class="fieldset__legend">1. Año</legend>
+          <div id="onb-anios" class="chip-group" role="radiogroup" aria-label="Año"></div>
+        </fieldset>
+
+        <fieldset class="fieldset" id="onb-modalidad-wrap" disabled>
+          <legend class="fieldset__legend">2. Modalidad</legend>
+          <div id="onb-modalidades" class="chip-group" role="radiogroup" aria-label="Modalidad"></div>
+          <p class="fieldset__hint" id="onb-modalidad-hint">Elegí primero el año.</p>
+        </fieldset>
+
+        <div id="onb-preview" class="onb-preview hidden">
+          <h3 class="onb-preview__title">Materias de tu curso</h3>
+          <ul id="onb-materias" class="onb-preview__list"></ul>
+        </div>
+
+        <p id="onb-error" class="auth__error hidden" role="alert"></p>
+
+        <div class="auth__actions">
+          <button type="button" id="btn-onb-salir" class="btn btn--ghost">Cerrar sesión</button>
+          <button type="submit" id="btn-onb-guardar" class="btn btn--primary" disabled>Guardar y comenzar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ APP ============ -->
+  <div id="app" class="app hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar" aria-label="Navegación principal">
+      <div class="sidebar__top">
+        <button id="btn-toggle-sidebar" class="icon-btn sidebar__burger" aria-label="Contraer menú" aria-expanded="true" aria-controls="sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+        <span class="sidebar__brand">
+          <span class="sidebar__brand-mark" aria-hidden="true">E</span>
+          <span class="sidebar__brand-text">EduFlow</span>
+        </span>
+      </div>
+
+      <nav class="sidebar__nav">
+        <button class="nav-item is-active" data-vista="calendario" aria-current="page">
+          <svg class="nav-item__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
+          <span class="nav-item__label">Calendario</span>
+        </button>
+        <button class="nav-item" data-vista="historial">
+          <svg class="nav-item__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 8v4l3 2" />
+          </svg>
+          <span class="nav-item__label">Historial</span>
+        </button>
+        <button class="nav-item" data-vista="foro">
+          <svg class="nav-item__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" />
+          </svg>
+          <span class="nav-item__label">Foro</span>
+          <span id="foro-badge" class="nav-item__badge hidden">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar__bottom">
+        <button id="btn-config" class="nav-item nav-item--config">
+          <svg class="nav-item__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+          </svg>
+          <span class="nav-item__label">Configuración</span>
+        </button>
+      </div>
+    </aside>
+
+    <div id="sidebar-scrim" class="sidebar-scrim" hidden></div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header__left">
+        <button id="btn-toggle-sidebar-mobile" class="icon-btn header__burger" aria-label="Abrir menú">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+        <div>
+          <h1 id="titulo-vista" class="header__title">Calendario</h1>
+          <p id="subtitulo-vista" class="header__subtitle"></p>
+        </div>
+      </div>
+
+      <div class="header__right">
+        <button id="btn-tema" class="icon-btn" aria-label="Cambiar tema" title="Cambiar tema claro/oscuro">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+          </svg>
+        </button>
+
+        <button id="perfil-btn" class="perfil" aria-label="Perfil de usuario" aria-haspopup="dialog">
+          <img id="perfil-avatar" class="perfil__avatar" alt="" />
+          <span class="perfil__info">
+            <span id="perfil-nombre" class="perfil__nombre">—</span>
+            <span id="perfil-badge" class="badge badge--curso">—</span>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenido dinámico -->
+    <main id="vista-principal" class="main" tabindex="-1">
+      <section id="vista-calendario" class="vista" aria-label="Calendario"></section>
+      <section id="vista-historial" class="vista hidden" aria-label="Historial"></section>
+      <section id="vista-foro" class="vista hidden" aria-label="Foro"></section>
+    </main>
+
+    <!-- Botón flotante para crear eventos (móvil) -->
+    <button id="fab-nuevo" class="fab" aria-label="Nuevo evento">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+    </button>
+  </div>
+
+  <!-- Contenedores globales -->
+  <div id="modal-root" class="modal-root" hidden></div>
+  <div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
