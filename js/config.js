@@ -75,6 +75,14 @@ export const MATERIAS_COMUNES = ['Educación Física', 'Inglés'];
    3. TIPOS DE EVENTO
    ============================================================ */
 
+/**
+ * Cada tipo declara su comportamiento, así la lógica nunca pregunta
+ * por el id del tipo (`tipo === 'feriado'`) sino por la capacidad:
+ *  - requiereMateria  → el formulario pide materia obligatoria.
+ *  - alcanceGlobal    → se publica para todo el colegio, no sólo para el curso.
+ *  - permiteCompletar → el alumno puede marcarlo como completado (uso personal).
+ *  - caducaPorFecha   → se considera cumplido cuando la fecha ya pasó.
+ */
 export const TIPOS_EVENTO = {
   tarea: {
     id: 'tarea',
@@ -82,7 +90,10 @@ export const TIPOS_EVENTO = {
     plural: 'Tareas y TPs',
     color: 'var(--tarea)',
     clase: 'color-tarea',
-    requiereMateria: true
+    requiereMateria: true,
+    alcanceGlobal: false,
+    permiteCompletar: true,
+    caducaPorFecha: false
   },
   examen: {
     id: 'examen',
@@ -90,7 +101,23 @@ export const TIPOS_EVENTO = {
     plural: 'Exámenes',
     color: 'var(--examen)',
     clase: 'color-examen',
-    requiereMateria: true
+    requiereMateria: true,
+    alcanceGlobal: false,
+    // Los exámenes sólo se leen: se dan por rendidos cuando pasa la fecha.
+    permiteCompletar: false,
+    caducaPorFecha: true
+  },
+  otro: {
+    id: 'otro',
+    etiqueta: 'Otros',
+    plural: 'Otros',
+    color: 'var(--otro)',
+    clase: 'color-otro',
+    // Cumpleaños, recordatorios y actividades generales: la materia es opcional.
+    requiereMateria: false,
+    alcanceGlobal: false,
+    permiteCompletar: false,
+    caducaPorFecha: false
   },
   feriado: {
     id: 'feriado',
@@ -98,11 +125,17 @@ export const TIPOS_EVENTO = {
     plural: 'Feriados',
     color: 'var(--feriado)',
     clase: 'color-feriado',
-    requiereMateria: false
+    requiereMateria: false,
+    alcanceGlobal: true,
+    permiteCompletar: false,
+    caducaPorFecha: false
   }
 };
 
-export const ORDEN_TIPOS = ['examen', 'tarea', 'feriado'];
+export const ORDEN_TIPOS = ['examen', 'tarea', 'otro', 'feriado'];
+
+/** Tipos que admiten materia (obligatoria u opcional) en el formulario. */
+export const TIPOS_CON_MATERIA_OPCIONAL = ['otro'];
 
 /* ============================================================
    4. FORO
@@ -111,8 +144,64 @@ export const ORDEN_TIPOS = ['examen', 'tarea', 'feriado'];
 /** Canal abierto a todos los cursos. */
 export const CANAL_GENERAL = 'general';
 
+/**
+ * Título exacto del hilo oficial que existe en el canal de cada curso.
+ * Estos hilos se crean automáticamente y no se pueden eliminar.
+ */
+export const HILO_OFICIAL_TITULO = 'Dudas y avisos del curso';
+
 /* ============================================================
-   5. HELPERS DE CONFIGURACIÓN
+   5. MODERADORES
+   ============================================================
+   Lista configurable de alumnos con permisos de moderación.
+   Se identifican por nombre + apellido + curso, así que alcanza con
+   agregar una línea acá para dar de alta a un moderador nuevo.
+
+   - `anio` acepta '5', '5to' o '5º' (se normaliza automáticamente).
+   - `modalidad` acepta 'A' / 'B' para el ciclo básico y
+     'Economia' / 'Economía' / 'Sociales' para el superior.
+*/
+export const MODERADORES_CONFIG = [
+  // { nombre: 'Nombre', apellido: 'Apellido', anio: '5to', modalidad: 'Economia' },
+  // ── Agregar más moderadores debajo ──
+];
+
+/** Quita acentos, espacios sobrantes y pasa a minúsculas. */
+export function normalizarTexto(valor = '') {
+  return String(valor)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** '5to' | '5º' | '5' → '5' */
+export function normalizarAnio(valor = '') {
+  const match = String(valor).match(/\d/);
+  return match ? match[0] : '';
+}
+
+/**
+ * ¿El usuario figura en MODERADORES_CONFIG?
+ * @param {string} nombreCompleto  Nombre y apellido tal como llega de Google.
+ * @param {Object} perfil          { anio, modalidad }
+ */
+export function esModeradorConfigurado(nombreCompleto, perfil) {
+  if (!nombreCompleto || !perfil) return false;
+  const nombreNorm = normalizarTexto(nombreCompleto);
+  return MODERADORES_CONFIG.some((m) => {
+    const completo = normalizarTexto(`${m.nombre} ${m.apellido}`);
+    const invertido = normalizarTexto(`${m.apellido} ${m.nombre}`);
+    const coincideNombre = nombreNorm === completo || nombreNorm === invertido;
+    const coincideAnio = normalizarAnio(m.anio) === normalizarAnio(perfil.anio);
+    const coincideModalidad = normalizarTexto(m.modalidad) === normalizarTexto(perfil.modalidad);
+    return coincideNombre && coincideAnio && coincideModalidad;
+  });
+}
+
+/* ============================================================
+   6. HELPERS DE CONFIGURACIÓN
    ============================================================ */
 
 /** Arma la clave de curso usada en MATERIAS_CONFIG. */

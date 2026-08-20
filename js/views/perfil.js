@@ -24,7 +24,10 @@ export function abrirPerfil({ alCambiarCurso, alCerrarSesion }) {
         <div class="stack" style="gap:2px">
           <h3 style="font-size:var(--fs-lg)">${esc(s.nombre)}</h3>
           <p class="text-3 text-sm">${esc(s.email)}</p>
-          <p><span class="badge badge--curso">${esc(etiquetaCurso(store.cursoActual()))}</span></p>
+          <p class="row wrap" style="gap:6px">
+            <span class="badge badge--curso">${esc(etiquetaCurso(store.cursoActual()))}</span>
+            ${store.esModerador() ? '<span class="badge badge--moderador">Moderador</span>' : ''}
+          </p>
         </div>
       </div>
 

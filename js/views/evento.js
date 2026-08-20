@@ -6,7 +6,7 @@ import { abrirModal, cerrarModal, confirmar } from '../components/modal.js';
 import { toast } from '../components/toast.js';
 import { esc, $$ } from '../utils/dom.js';
 import { hoyISO, formatoLargo, textoRelativo } from '../utils/fecha.js';
-import { TIPOS_EVENTO, ORDEN_TIPOS, etiquetaCurso } from '../config.js';
+import { TIPOS_EVENTO, ORDEN_TIPOS, TIPOS_CON_MATERIA_OPCIONAL, etiquetaCurso } from '../config.js';
 import * as store from '../services/store.js';
 
 /* ------------------------------------------------------------
@@ -40,7 +40,7 @@ export function abrirFormularioEvento({ evento = null, fecha = hoyISO() } = {}) 
       </label>
 
       <label class="field" id="wrap-materia" style="margin-top:var(--sp-4)">
-        <span class="field__label">Materia</span>
+        <span class="field__label" id="lbl-materia">Materia</span>
         <select id="ev-materia" class="field__select">
           <option value="">Seleccioná una materia…</option>
           ${materias.map((m) => `<option value="${esc(m)}"${evento && evento.materia === m ? ' selected' : ''}>${esc(m)}</option>`).join('')}
@@ -83,13 +83,21 @@ export function abrirFormularioEvento({ evento = null, fecha = hoyISO() } = {}) 
     ],
     alMontar: (modal) => {
       const grupo = modal.querySelector('#tipo-group');
+
+      /** Ajusta el campo materia y el texto de alcance según el tipo elegido. */
       const sincronizarTipo = () => {
         const tipo = grupo.querySelector('[aria-checked="true"]').dataset.tipo;
-        const requiereMateria = TIPOS_EVENTO[tipo].requiereMateria;
-        modal.querySelector('#wrap-materia').classList.toggle('hidden', !requiereMateria);
-        modal.querySelector('#ev-alcance').textContent = requiereMateria
-          ? `Visible para tu curso: ${etiquetaCurso(store.cursoActual())}.`
-          : 'Los feriados y días sin clases se comparten con todos los cursos del colegio.';
+        const config = TIPOS_EVENTO[tipo];
+        const materiaOpcional = TIPOS_CON_MATERIA_OPCIONAL.includes(tipo);
+        const muestraMateria = config.requiereMateria || materiaOpcional;
+
+        modal.querySelector('#wrap-materia').classList.toggle('hidden', !muestraMateria);
+        modal.querySelector('#lbl-materia').innerHTML = materiaOpcional
+          ? 'Materia <span class="text-3">(opcional)</span>'
+          : 'Materia';
+        modal.querySelector('#ev-alcance').textContent = config.alcanceGlobal
+          ? 'Los feriados y días sin clases se comparten con todos los cursos del colegio.'
+          : `Visible para tu curso: ${etiquetaCurso(store.cursoActual())}.`;
       };
 
       grupo.addEventListener('click', (e) => {
@@ -149,8 +157,11 @@ export function abrirDetalleEvento(id) {
   if (!evento) return;
 
   const tipo = TIPOS_EVENTO[evento.tipo];
-  const hecho = store.estaCompletado(evento.id);
-  const esMio = store.puedeEditar(evento);
+  const completable = store.esCompletable(evento);
+  const hecho = completable && store.estaCompletado(evento.id);
+  const puedeEditar = store.puedeEditar(evento);
+  const puedeBorrar = store.puedeEliminarEvento(evento);
+  const esPasado = evento.fecha < hoyISO();
 
   const filas = [
     ['Tipo', `<span class="badge badge--${evento.tipo}"><span class="badge__punto"></span>${esc(tipo.etiqueta)}</span>`],
@@ -169,41 +180,51 @@ export function abrirDetalleEvento(id) {
           <span class="detalle__valor">${v}</span>
         </div>`).join('')}
       ${evento.descripcion ? `<div class="detalle__desc">${esc(evento.descripcion)}</div>` : ''}
-      ${evento.tipo !== 'feriado' ? `
+      ${completable ? `
         <button type="button" class="check" id="btn-check-detalle" aria-checked="${hecho}" role="checkbox">
           <span class="check__box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></span>
-          <span>${hecho ? 'Marcado como completado' : 'Marcar como completado'}</span>
-        </button>` : ''}
+          <span>${hecho ? 'Marcada como completada' : 'Marcar como completada'}</span>
+        </button>
+        <p class="text-3 text-xs">Esta marca es personal: sólo la ves vos.</p>` : ''}
+      ${tipo.caducaPorFecha && esPasado
+        ? '<p class="text-3 text-xs">Este examen ya pasó: cuenta como rendido en tus estadísticas.</p>'
+        : ''}
     </div>
   `;
 
-  const acciones = [{ texto: 'Cerrar', clase: 'btn--ghost' }];
-  if (esMio) {
-    acciones.unshift(
-      {
-        texto: 'Eliminar',
-        clase: 'btn--peligro',
-        cerrar: false,
-        onClick: async () => {
-          const ok = await confirmar({
-            titulo: 'Eliminar evento',
-            mensaje: `¿Seguro que querés eliminar "${evento.titulo}"? Se borra para todo el curso.`,
-            textoOk: 'Eliminar',
-            peligro: true
-          });
-          if (ok) {
-            store.eliminarEvento(evento.id);
-            toast('Evento eliminado', 'exito');
-          }
+  // Orden en el pie del modal: Eliminar · Cerrar · Editar (acción principal a la derecha)
+  const acciones = [];
+
+  if (puedeBorrar) {
+    const soloModeracion = !puedeEditar;
+    acciones.push({
+      texto: soloModeracion ? 'Eliminar (moderación)' : 'Eliminar',
+      clase: 'btn--peligro',
+      cerrar: false,
+      onClick: async () => {
+        const ok = await confirmar({
+          titulo: 'Eliminar evento',
+          mensaje: `¿Seguro que querés eliminar "${evento.titulo}"? Se borra para todo el curso.`,
+          textoOk: 'Eliminar',
+          peligro: true
+        });
+        if (ok) {
+          store.eliminarEvento(evento.id);
+          toast('Evento eliminado', 'exito');
         }
-      },
-      {
-        texto: 'Editar',
-        clase: 'btn--primary',
-        cerrar: false,
-        onClick: () => abrirFormularioEvento({ evento })
       }
-    );
+    });
+  }
+
+  acciones.push({ texto: 'Cerrar', clase: 'btn--ghost' });
+
+  if (puedeEditar) {
+    acciones.push({
+      texto: 'Editar',
+      clase: 'btn--primary',
+      cerrar: false,
+      onClick: () => abrirFormularioEvento({ evento })
+    });
   }
 
   abrirModal({
@@ -216,7 +237,7 @@ export function abrirDetalleEvento(id) {
       check.addEventListener('click', () => {
         const nuevo = store.alternarCompletado(evento.id);
         check.setAttribute('aria-checked', String(nuevo));
-        check.querySelector('span:last-child').textContent = nuevo ? 'Marcado como completado' : 'Marcar como completado';
+        check.querySelector('span:last-child').textContent = nuevo ? 'Marcada como completada' : 'Marcar como completada';
       });
     }
   });

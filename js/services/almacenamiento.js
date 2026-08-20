@@ -69,7 +69,7 @@ export const CLAVES = {
   perfiles: 'perfiles',
   eventos: 'eventos',
   hilos: 'hilos',
-  semilla: 'semilla_cargada',
+  esquema: 'esquema_version',
   prefs: (email) => `prefs.${email}`,
   completados: (email) => `completados.${email}`,
   visitaForo: (email) => `visitaForo.${email}`

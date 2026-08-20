@@ -86,7 +86,40 @@ export const MATERIAS_CONFIG = {
 
 ---
 
-## 4. Estructura del proyecto
+## 4. Moderadores
+
+Los permisos de moderación se definen en código, en `MODERADORES_CONFIG`
+([`js/config.js`](js/config.js)). Se identifica al alumno por nombre, apellido,
+año y modalidad:
+
+```js
+export const MODERADORES_CONFIG = [
+  { nombre: 'Nombre', apellido: 'Apellido', anio: '5to', modalidad: 'Economia' },
+  // ── Agregar más moderadores debajo ──
+];
+```
+
+- `anio` acepta `'5'`, `'5to'` o `'5º'`; `modalidad` acepta `'Economia'` o
+  `'Economía'` indistintamente (se normalizan acentos y mayúsculas).
+- El nombre se compara contra el que devuelve Google, en cualquiera de los dos
+  órdenes (`Nombre Apellido` o `Apellido Nombre`).
+
+Un moderador puede:
+
+- Eliminar publicaciones y respuestas de **su curso** y del canal **#General**.
+- Eliminar eventos de su curso y los feriados globales.
+- Ver cuántos **reportes** acumuló cada respuesta.
+
+Nadie —tampoco un moderador— puede eliminar los hilos oficiales
+"Dudas y avisos del curso".
+
+> Igual que la restricción de dominio, esto es una regla de interfaz: mientras
+> no exista backend, cualquiera con la consola del navegador puede saltearla.
+> La verificación real tiene que hacerse del lado del servidor.
+
+---
+
+## 5. Estructura del proyecto
 
 ```
 index.html                 Estructura de la SPA (login, onboarding y app)
@@ -111,38 +144,68 @@ js/
   services/almacenamiento.js  Persistencia (localStorage)
   services/store.js        Estado central observable + acciones
   services/auth.js         Google Identity Services + validación de dominio
-  services/datosDemo.js    Contenido de ejemplo inicial
+  services/migraciones.js  Migraciones de datos ya guardados en el navegador
   components/modal.js      Diálogos accesibles
   components/toast.js      Notificaciones
-  views/                   Calendario, historial, foro, evento, configuración, perfil, onboarding
+  components/anonToggle.js Selector Perfil ↔ Incógnito
+  views/                   Calendario, día, historial, foro, evento, configuración, perfil, onboarding
+  views/partes.js          Fragmentos compartidos (tarjeta de evento, estado vacío)
 ```
 
 ---
 
-## 5. Funcionalidades
+## 6. Funcionalidades
 
 ### Calendario
-- Vista **mensual** y **semanal (agenda)**.
-- Tres tipos de evento con código de color:
+- Vista **mensual** (domingo → sábado) y **semanal (agenda)**.
+- Cuatro tipos de evento con código de color:
   - 🟠 **Tareas / TPs** (`#FF9F1C`)
   - 🔴 **Exámenes** (`#E63946`)
+  - ⚪ **Otros** (`#D1D5DB` claro / `#4B5563` oscuro) — cumpleaños, recordatorios
+    y actividades generales
   - 🟢 **Feriados / días sin clases** (`#2A9D8F`)
-- Alta, edición y borrado (sólo el autor puede editar o borrar lo que publicó).
-- Los exámenes y tareas se comparten **con el curso**; los feriados, **con todo el colegio**.
-- Panel de **productividad semanal**: anillo de progreso, pendientes, completadas
-  y próximos 14 días.
+- **Pop-up del día:** tocar cualquier celda abre un modal con todos los eventos de
+  esa fecha en tamaño legible, más un botón **“+ Crear nuevo evento”** que abre el
+  formulario con la fecha ya cargada. No hace falta apuntarle a los títulos chicos
+  de la grilla.
+- Los **días ya transcurridos** aparecen tachados con una diagonal gris, tanto en
+  modo claro como oscuro.
+- Alta, edición y borrado (el autor edita y borra lo suyo; un moderador puede
+  borrar lo de su curso).
+- Los exámenes, tareas y "Otros" se comparten **con el curso**; los feriados, **con
+  todo el colegio**.
+
+#### Completado y "Tu semana"
+- La marca **“completado” existe sólo para Tareas y TPs**, es de uso personal y se
+  guarda por usuario en `localStorage`.
+- Los **exámenes no se marcan**: caducan por fecha y cuentan como rendidos una vez
+  que pasaron.
+- La barra de compleción de **“Tu semana”** mide únicamente los eventos de la semana
+  **cuya fecha ya pasó** (tareas/TPs y exámenes). Lo que todavía no ocurrió queda
+  fuera del porcentaje para no distorsionar la métrica.
 
 ### Historial
-- Estadísticas: exámenes rendidos, tareas, días sin clases y % de cumplimiento.
+- Estadísticas: exámenes rendidos, tareas, días sin clases y % de tareas completadas.
 - Línea de tiempo agrupada por mes, con filtros por tipo, materia, período y búsqueda.
 - Rendimiento por materia y **exportación a CSV**.
 
 ### Foro
 - Canal **#General** (todo el colegio) + un canal por curso.
-- Publicaciones con título, mensaje y materia opcional; respuestas y reacciones.
+- Cada canal de curso tiene su **hilo oficial fijo** `Dudas y avisos del curso`,
+  siempre arriba de todo y no eliminable.
+- Publicaciones con título, mensaje y materia opcional; respuestas, reacciones
+  **“Me sirve”** (en publicaciones y en cada respuesta) y **reportes** a moderación.
+- **Publicación anónima:** un selector deslizante alterna entre el ícono de perfil
+  (izquierda) y el de incógnito (derecha). En incógnito la publicación o respuesta
+  se guarda como `Anónimo` y no muestra ni el nombre, ni la foto, ni el curso.
 - Se pueden **leer y responder los canales de otros cursos**; las publicaciones
   nuevas van a #General o al canal propio.
 - Indicador de novedades en el menú lateral.
+
+> **Sobre el anonimato:** el email del autor se conserva internamente para saber
+> quién puede borrar su propia publicación, pero nunca se muestra. Como todos los
+> datos viven en el navegador, el anonimato es de interfaz: con un backend real,
+> la identidad tiene que quedar del lado del servidor y no viajar al cliente.
 
 ### Interfaz
 - **Modo claro / oscuro** con transición suave (`background-color 0.3s, color 0.3s`),
@@ -156,7 +219,7 @@ js/
 
 ---
 
-## 6. Dónde se guardan los datos
+## 7. Dónde se guardan los datos
 
 Hoy toda la información se guarda en el **`localStorage` del navegador**, detrás de
 `js/services/almacenamiento.js`. Eso significa que los datos son por dispositivo:
@@ -171,17 +234,30 @@ necesita cambios.
 
 Claves usadas: `eduflow.sesion`, `eduflow.perfiles`, `eduflow.eventos`,
 `eduflow.hilos`, `eduflow.prefs.<email>`, `eduflow.completados.<email>`,
-`eduflow.theme`.
+`eduflow.theme`, `eduflow.esquema_version`.
 
-La primera vez que se abre la app se cargan datos de ejemplo
-(`js/services/datosDemo.js`) para que el calendario y el foro no queden vacíos.
-Se pueden borrar desde **Configuración → Restablecer datos**.
+### Contenido inicial
+
+El calendario **arranca vacío**: no hay eventos de ejemplo. Lo único que se crea
+automáticamente son los hilos oficiales `Dudas y avisos del curso`, uno por cada
+combinación de año y modalidad.
+
+### Migraciones
+
+`eduflow.esquema_version` marca la versión de los datos guardados y
+[`js/services/migraciones.js`](js/services/migraciones.js) aplica los cambios
+pendientes al arrancar. La migración **v1 → v2** elimina los eventos e hilos de
+ejemplo que traía la primera versión (los reconoce por sus autores ficticios) sin
+tocar lo que hayan cargado los alumnos.
+
+Para empezar de cero: **Configuración → Restablecer datos**.
 
 ---
 
-## 7. Próximos pasos sugeridos
+## 8. Próximos pasos sugeridos
 
 - Completar `MATERIAS_CONFIG` con las materias reales de cada curso.
-- Backend con verificación del `id_token` del lado del servidor.
+- Cargar los moderadores reales en `MODERADORES_CONFIG`.
+- Backend con verificación del `id_token` y de los permisos del lado del servidor.
 - Notificaciones push para exámenes próximos.
-- Roles (delegado / preceptor) para moderar publicaciones.
+- Panel de moderación con la cola de reportes pendientes.

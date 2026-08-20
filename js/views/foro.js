@@ -1,12 +1,17 @@
 /**
  * foro.js — Foro de consultas y coordinación entre cursos.
+ *
+ * Cada curso tiene su canal con un hilo oficial fijo ("Dudas y avisos del
+ * curso") que no se puede eliminar, más el canal #General compartido.
+ * Las publicaciones y respuestas pueden hacerse con el perfil o en incógnito.
  */
 
-import { esc, delegar, avatarPorDefecto } from '../utils/dom.js';
+import { esc, delegar, avatarPorDefecto, avatarAnonimo } from '../utils/dom.js';
 import { haceCuanto } from '../utils/fecha.js';
 import { CURSOS, CANAL_GENERAL, etiquetaCurso, etiquetaCursoCorta } from '../config.js';
 import * as store from '../services/store.js';
 import { abrirModal, cerrarModal, confirmar } from '../components/modal.js';
+import { plantillaAnonToggle, conectarAnonToggles, esAnonimo } from '../components/anonToggle.js';
 import { toast } from '../components/toast.js';
 
 let canalActivo = CANAL_GENERAL;
@@ -32,7 +37,7 @@ export function renderForo(contenedor) {
         ${plantillaComposer(puedePublicar)}
         <div class="hilos">
           ${hilos.length
-            ? hilos.map((h) => plantillaHilo(h, puedePublicar)).join('')
+            ? hilos.map((h) => plantillaHilo(h)).join('')
             : `<div class="card">${plantillaVacioForo(puedePublicar)}</div>`}
         </div>
       </div>
@@ -41,6 +46,7 @@ export function renderForo(contenedor) {
 
   if (!listo) {
     conectarEventos(contenedor);
+    conectarAnonToggles(contenedor);
     listo = true;
   }
   store.marcarForoVisitado();
@@ -86,26 +92,39 @@ function plantillaVacioForo(puedePublicar) {
     </div>`;
 }
 
+/** Avatar según si la publicación es anónima o no. */
+function avatarDe(autor) {
+  if (autor.anonimo) return avatarAnonimo();
+  return autor.foto || avatarPorDefecto(autor.nombre, autor.email || autor.nombre);
+}
+
 function plantillaHilo(h) {
   const email = store.obtenerEstado().sesion.email;
   const meGusta = h.likes.includes(email);
-  const esMio = h.autor.email === email;
   const abierto = abiertos.has(h.id);
+  const oficial = store.esHiloOficial(h);
+  const puedeBorrar = store.puedeEliminarHilo(h);
+  const esMio = h.autor.email === email;
 
   return `
-    <article class="hilo" data-hilo="${h.id}">
+    <article class="hilo${oficial ? ' esta-fijado' : ''}" data-hilo="${h.id}">
       <header class="hilo__head">
-        <img class="hilo__avatar" src="${esc(h.autor.foto || avatarPorDefecto(h.autor.nombre, h.autor.email))}" alt="" />
+        <img class="hilo__avatar" src="${esc(avatarDe(h.autor))}" alt="" />
         <div class="grow">
-          <p class="hilo__autor">${esc(h.autor.nombre)}</p>
+          <p class="hilo__autor">
+            ${esc(h.autor.nombre)}
+            ${h.autor.anonimo ? '<span class="badge badge--anonimo">incógnito</span>' : ''}
+          </p>
           <p class="hilo__meta">
-            ${h.autor.curso ? `<span class="badge badge--curso">${esc(etiquetaCursoCorta(h.autor.curso))}</span>` : ''}
-            <span>${esc(haceCuanto(h.creadoEn))}</span>
+            ${oficial ? '<span class="badge badge--oficial">Hilo oficial</span>' : ''}
+            ${h.autor.curso && !h.autor.anonimo ? `<span class="badge badge--curso">${esc(etiquetaCursoCorta(h.autor.curso))}</span>` : ''}
+            ${oficial ? '' : `<span>${esc(haceCuanto(h.creadoEn))}</span>`}
             ${h.materia ? `<span>· ${esc(h.materia)}</span>` : ''}
           </p>
         </div>
-        ${esMio ? `
-          <button class="icon-btn icon-btn--sm" data-borrar-hilo="${h.id}" aria-label="Eliminar publicación">
+        ${puedeBorrar ? `
+          <button class="icon-btn icon-btn--sm" data-borrar-hilo="${h.id}"
+                  aria-label="Eliminar publicación" title="${esMio ? 'Eliminar' : 'Eliminar (moderación)'}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
           </button>` : ''}
       </header>
@@ -126,34 +145,70 @@ function plantillaHilo(h) {
 
       ${abierto ? `
         <div class="respuestas">
-          ${h.respuestas.map((r) => plantillaRespuesta(h.id, r, r.autor.email === email)).join('')}
+          ${h.respuestas.map((r) => plantillaRespuesta(h, r)).join('')}
           <form class="responder" data-form-resp="${h.id}">
-            <input type="text" class="field__input responder__input" name="texto" maxlength="400"
-                   placeholder="Escribí una respuesta…" aria-label="Respuesta" />
-            <button type="submit" class="btn btn--primary btn--sm">Responder</button>
+            <div class="responder__fila">
+              <input type="text" class="field__input responder__input" name="texto" maxlength="400"
+                     placeholder="Escribí una respuesta…" aria-label="Respuesta" />
+              <button type="submit" class="btn btn--primary btn--sm">Responder</button>
+            </div>
+            ${plantillaAnonToggle(`anon-resp-${h.id}`)}
           </form>
         </div>` : ''}
     </article>
   `;
 }
 
-function plantillaRespuesta(hiloId, r, esMia) {
+function plantillaRespuesta(hilo, r) {
+  const email = store.obtenerEstado().sesion.email;
+  const likes = r.likes || [];
+  const reportes = r.reportes || [];
+  const meSirve = likes.includes(email);
+  const reportada = reportes.includes(email);
+  const puedeBorrar = store.puedeEliminarRespuesta(hilo, r);
+  const esMia = r.autor.email === email;
+  const moderando = store.puedeModerar(hilo.canal);
+
   return `
     <div class="respuesta">
-      <img class="respuesta__avatar" src="${esc(r.autor.foto || avatarPorDefecto(r.autor.nombre, r.autor.email))}" alt="" />
+      <img class="respuesta__avatar" src="${esc(avatarDe(r.autor))}" alt="" />
       <div class="respuesta__burbuja">
         <div class="row row--between">
           <span class="respuesta__autor">${esc(r.autor.nombre)}
-            ${r.autor.curso ? `<span class="text-3" style="font-weight:500"> · ${esc(etiquetaCursoCorta(r.autor.curso))}</span>` : ''}
+            ${r.autor.anonimo ? '<span class="badge badge--anonimo">incógnito</span>' : ''}
+            ${r.autor.curso && !r.autor.anonimo ? `<span class="text-3" style="font-weight:500"> · ${esc(etiquetaCursoCorta(r.autor.curso))}</span>` : ''}
           </span>
-          <span class="row" style="gap:6px">
-            <span class="respuesta__fecha">${esc(haceCuanto(r.creadoEn))}</span>
-            ${esMia ? `<button class="icon-btn icon-btn--sm" data-borrar-resp="${r.id}" data-hilo-padre="${hiloId}" aria-label="Eliminar respuesta">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            </button>` : ''}
-          </span>
+          <span class="respuesta__fecha">${esc(haceCuanto(r.creadoEn))}</span>
         </div>
         <p class="respuesta__texto">${esc(r.texto)}</p>
+
+        <div class="respuesta__acciones">
+          <button class="accion accion--sm${meSirve ? ' is-active' : ''}"
+                  data-like-resp="${r.id}" data-hilo-padre="${hilo.id}" aria-pressed="${meSirve}">
+            <svg viewBox="0 0 24 24" aria-hidden="true" ${meSirve ? 'fill="currentColor"' : ''}><path d="M12 20s-7-4.5-9-8.5A5 5 0 0 1 12 6a5 5 0 0 1 9 5.5C19 15.5 12 20 12 20z"/></svg>
+            ${likes.length || ''} Me sirve
+          </button>
+
+          ${esMia ? '' : `
+            <button class="accion accion--sm${reportada ? ' es-reportada' : ''}"
+                    data-reportar="${r.id}" data-hilo-padre="${hilo.id}" aria-pressed="${reportada}"
+                    title="${reportada ? 'Quitar reporte' : 'Reportar a un moderador'}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h11l-1.6 3.5L16 11H5"/></svg>
+              ${reportada ? 'Reportada' : 'Reportar'}
+            </button>`}
+
+          ${moderando && reportes.length ? `
+            <span class="badge badge--examen" title="Reportes recibidos">
+              ${reportes.length} reporte${reportes.length === 1 ? '' : 's'}
+            </span>` : ''}
+
+          ${puedeBorrar ? `
+            <button class="accion accion--sm" data-borrar-resp="${r.id}" data-hilo-padre="${hilo.id}"
+                    title="${esMia ? 'Eliminar' : 'Eliminar (moderación)'}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+              Eliminar
+            </button>` : ''}
+        </div>
       </div>
     </div>`;
 }
@@ -193,6 +248,13 @@ function abrirFormularioHilo() {
             ${materias.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join('')}
           </select>
         </label>
+
+        <div class="field">
+          <span class="field__label">Identidad</span>
+          ${plantillaAnonToggle('anon-hilo')}
+          <span class="field__hint">En incógnito la publicación figura como “Anónimo” para el resto del colegio.</span>
+        </div>
+
         <p class="auth__error hidden" id="hilo-error" role="alert"></p>
       </form>
     `,
@@ -201,6 +263,7 @@ function abrirFormularioHilo() {
       { texto: 'Publicar', clase: 'btn--primary', cerrar: false, onClick: (modal) => guardarHilo(modal) }
     ],
     alMontar: (modal) => {
+      conectarAnonToggles(modal);
       modal.querySelector('#form-hilo').addEventListener('submit', (e) => {
         e.preventDefault();
         guardarHilo(modal);
@@ -214,6 +277,7 @@ function guardarHilo(modal) {
   const cuerpo = modal.querySelector('#hilo-cuerpo').value.trim();
   const canal = modal.querySelector('#hilo-canal').value;
   const materia = modal.querySelector('#hilo-materia').value;
+  const anonimo = esAnonimo(modal, 'anon-hilo');
   const error = modal.querySelector('#hilo-error');
 
   if (titulo.length < 4) {
@@ -222,10 +286,10 @@ function guardarHilo(modal) {
     return false;
   }
 
-  store.crearHilo({ canal, titulo, cuerpo, materia });
+  store.crearHilo({ canal, titulo, cuerpo, materia, anonimo });
   canalActivo = canal;
   cerrarModal();
-  toast('Publicación creada', 'exito');
+  toast(anonimo ? 'Publicado como Anónimo' : 'Publicación creada', 'exito');
   return true;
 }
 
@@ -243,12 +307,21 @@ function conectarEventos(contenedor) {
 
   delegar(contenedor, 'click', '[data-like]', (e, btn) => store.alternarLike(btn.dataset.like));
 
+  delegar(contenedor, 'click', '[data-like-resp]', (e, btn) => {
+    store.alternarLikeRespuesta(btn.dataset.hiloPadre, btn.dataset.likeResp);
+  });
+
+  delegar(contenedor, 'click', '[data-reportar]', (e, btn) => {
+    const reportada = store.alternarReporteRespuesta(btn.dataset.hiloPadre, btn.dataset.reportar);
+    toast(reportada ? 'Respuesta reportada a los moderadores' : 'Reporte retirado', reportada ? 'alerta' : 'info');
+  });
+
   delegar(contenedor, 'click', '[data-toggle-resp]', (e, btn) => {
     const id = btn.dataset.toggleResp;
     abiertos.has(id) ? abiertos.delete(id) : abiertos.add(id);
     renderForo(contenedor);
-    const form = contenedor.querySelector(`[data-form-resp="${id}"] input`);
-    if (form) form.focus();
+    const input = contenedor.querySelector(`[data-form-resp="${id}"] input`);
+    if (input) input.focus();
   });
 
   delegar(contenedor, 'click', '[data-borrar-hilo]', async (e, btn) => {
@@ -258,10 +331,7 @@ function conectarEventos(contenedor) {
       textoOk: 'Eliminar',
       peligro: true
     });
-    if (ok) {
-      store.eliminarHilo(btn.dataset.borrarHilo);
-      toast('Publicación eliminada', 'exito');
-    }
+    if (ok && store.eliminarHilo(btn.dataset.borrarHilo)) toast('Publicación eliminada', 'exito');
   });
 
   delegar(contenedor, 'click', '[data-borrar-resp]', (e, btn) => {
@@ -275,8 +345,10 @@ function conectarEventos(contenedor) {
     const input = form.querySelector('input[name="texto"]');
     const texto = input.value.trim();
     if (!texto) return;
-    abiertos.add(form.dataset.formResp);
-    store.responderHilo(form.dataset.formResp, texto);
+    const hiloId = form.dataset.formResp;
+    const anonimo = esAnonimo(form, `anon-resp-${hiloId}`);
+    abiertos.add(hiloId);
+    store.responderHilo(hiloId, texto, anonimo);
     input.value = '';
   });
 }

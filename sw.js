@@ -7,7 +7,7 @@
  *  - Terceros (Google Identity Services): siempre a la red, nunca se cachean.
  */
 
-const VERSION = 'eduflow-v1';
+const VERSION = 'eduflow-v2';
 const ESENCIALES = [
   './',
   './index.html',
@@ -29,14 +29,17 @@ const ESENCIALES = [
   './js/services/almacenamiento.js',
   './js/services/store.js',
   './js/services/auth.js',
-  './js/services/datosDemo.js',
+  './js/services/migraciones.js',
   './js/components/modal.js',
+  './js/components/anonToggle.js',
   './js/components/toast.js',
   './js/views/onboarding.js',
   './js/views/calendario.js',
   './js/views/historial.js',
   './js/views/foro.js',
   './js/views/evento.js',
+  './js/views/dia.js',
+  './js/views/partes.js',
   './js/views/configuracion.js',
   './js/views/perfil.js',
   './assets/icons/icon.svg',

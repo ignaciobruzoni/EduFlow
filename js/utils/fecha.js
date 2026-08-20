@@ -5,7 +5,8 @@
 
 const LOCALE = 'es-AR';
 
-export const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+/** La semana arranca en domingo (columna 1) y termina en sábado (columna 7). */
+export const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 export const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
@@ -43,41 +44,53 @@ export function diffDias(isoA, isoB) {
   return Math.round((aFecha(isoB) - aFecha(isoA)) / MS);
 }
 
-/** Índice de día de semana con lunes = 0. */
-export function diaSemanaLunes(fecha) {
-  return (fecha.getDay() + 6) % 7;
+/** Índice de día de semana con domingo = 0 (igual que Date.getDay). */
+export function diaSemana(fecha) {
+  return fecha.getDay();
 }
 
-/** Lunes de la semana a la que pertenece la fecha ISO. */
+/** ¿Es sábado o domingo? */
+export function esFinDeSemana(fecha) {
+  return fecha.getDay() === 0 || fecha.getDay() === 6;
+}
+
+/** Domingo de la semana a la que pertenece la fecha ISO. */
 export function inicioSemana(iso = hoyISO()) {
   const f = aFecha(iso);
-  f.setDate(f.getDate() - diaSemanaLunes(f));
+  f.setDate(f.getDate() - diaSemana(f));
   return aISO(f);
 }
 
-/** Domingo de la semana correspondiente. */
+/** Sábado de la semana correspondiente. */
 export function finSemana(iso = hoyISO()) {
   return sumarDias(inicioSemana(iso), 6);
 }
 
-/** Devuelve las 7 fechas ISO de la semana. */
+/** Devuelve las 7 fechas ISO de la semana (domingo → sábado). */
 export function diasDeSemana(iso = hoyISO()) {
-  const lunes = inicioSemana(iso);
-  return Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i));
+  const domingo = inicioSemana(iso);
+  return Array.from({ length: 7 }, (_, i) => sumarDias(domingo, i));
 }
 
 /**
  * Matriz de 6 semanas (42 días) que cubre el mes indicado,
- * comenzando en lunes e incluyendo días del mes anterior/siguiente.
+ * comenzando en domingo e incluyendo días del mes anterior/siguiente.
  */
 export function diasDeMes(anio, mes) {
   const primero = new Date(anio, mes, 1, 12);
   const inicio = new Date(primero);
-  inicio.setDate(1 - diaSemanaLunes(primero));
+  inicio.setDate(1 - diaSemana(primero));
+  const hoy = hoyISO();
   return Array.from({ length: 42 }, (_, i) => {
     const f = new Date(inicio);
     f.setDate(inicio.getDate() + i);
-    return { iso: aISO(f), enMes: f.getMonth() === mes, finde: [5, 6].includes(diaSemanaLunes(f)) };
+    const iso = aISO(f);
+    return {
+      iso,
+      enMes: f.getMonth() === mes,
+      finde: esFinDeSemana(f),
+      pasado: iso < hoy
+    };
   });
 }
 
