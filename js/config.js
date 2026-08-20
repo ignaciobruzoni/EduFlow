@@ -54,18 +54,18 @@ export const MODALIDADES_SUPERIOR = [
  * Reemplazá los "completar" por las materias reales de cada curso.
  */
 export const MATERIAS_CONFIG = {
-  '1_A': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
-  '1_B': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
-  '2_A': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
-  '2_B': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música'],
-  '3_A': ['Biología', 'Físico-Química', 'Historia', 'Geografía', 'Prácticas del Lenguaje', 'Ciudadanía', 'Plástica', 'Música'],
-  '3_B': ['Biología', 'Físico-Química', 'Historia', 'Geografía', 'Prácticas del Lenguaje', 'Ciudadanía', 'Plástica', 'Música'],
-  '4_Economia': ['Biología', 'Física', 'Historia', 'Geografía', 'Literatura', 'Ciudadanía', 'S.I.C.', 'Teoría de las Org.'],
-  '4_Sociales': ['Biología', 'Física', 'Historia', 'Geografía', 'Literatura', 'Ciudadanía', "Psicología"],
-  '5_Economia': ['Química', 'Historia', 'Geografía', 'Literatura', 'Política y Ciud.', 'S.I.C.', 'Micro y Macro', 'Derecho'],
-  '5_Sociales': ['completar'],
-  '6_Economia': ['Literatura', 'Trabajo y Ciud', 'Proyecto Org. (Naty)', 'Proyecto Org. (Majo)', 'Filosofía', 'Arte', 'Econ. Política'],
-  '6_Sociales': ['completar']
+  '1_A': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música', "Ciudadania", "Informatica"],
+  '1_B': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música', "Ciudadania", "Informatica"],
+  '2_A': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música', "Ciudadania", "Informatica"],
+  '2_B': ['Cs. Naturales', 'Cs. Sociales', 'Prácticas del Lenguaje', 'Plástica', 'Música', "Ciudadania", "Informatica"],
+  '3_A': ['Biología', 'Físico-Química', 'Historia', 'Geografía', 'Prácticas del Lenguaje', 'Ciudadanía', 'Plástica', 'Música', "Informatica"],
+  '3_B': ['Biología', 'Físico-Química', 'Historia', 'Geografía', 'Prácticas del Lenguaje', 'Ciudadanía', 'Plástica', 'Música', "Informatica"],
+  '4_Economia': ['Biología', 'Física', 'Historia', 'Geografía', 'Literatura', 'Ciudadanía', 'S.I.C.', 'Teoría de las Org.',"Salud y Adolescencia", "NTICX"],
+  '4_Sociales': ['Biología', 'Física', 'Historia', 'Geografía', 'Literatura', 'Ciudadanía', "Psicología","Salud y Adolescencia", "NTICX"],
+  '5_Economia': ['Química', 'Historia', 'Geografía', 'Literatura', 'Política y Ciud.', 'S.I.C.', 'Micro y Macro', 'Derecho', "NTICX"],
+  '5_Sociales': ['Historia', 'Geografía', 'Literatura', 'Política y Ciud.', "Economia Politica", "Sociologia", "Cultura, Sociedad y Comunicacion", "NTICX"],
+  '6_Economia': ['Literatura', 'Trabajo y Ciud', 'Proyecto Org. (Naty)', 'Proyecto Org. (Majo)', 'Filosofía', 'Arte', 'Econ. Política', "Taller de Matematica", "Taller"],
+  '6_Sociales': ['Historia', 'Geografía', 'Literatura', 'Filosofía', "Proyecto de Investigacion", "Trabajo y Ciudadania", "Arte", "Taller de Matematica", "Taller" ]
 };
 
 /** Materias comunes que se agregan a todos los cursos (editable). */
