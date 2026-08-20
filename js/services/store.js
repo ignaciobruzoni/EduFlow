@@ -7,7 +7,11 @@
  */
 
 import { leer, escribir, borrar, limpiarTodo, CLAVES } from './almacenamiento.js';
-import { armarCursoKey, materiasDeCurso, CANAL_GENERAL } from '../config.js';
+import { migrar, ESQUEMA_ACTUAL } from './migraciones.js';
+import {
+  armarCursoKey, materiasDeCurso, CANAL_GENERAL, TIPOS_EVENTO,
+  HILO_OFICIAL_TITULO, CURSOS, esModeradorConfigurado, etiquetaCurso
+} from '../config.js';
 import { uid, avatarPorDefecto } from '../utils/dom.js';
 import { hoyISO } from '../utils/fecha.js';
 
@@ -55,14 +59,23 @@ export function obtenerEstado() {
    Carga inicial
    ============================================================ */
 
-/** Carga datos globales y, si hay sesión previa, los datos del usuario. */
+/** Carga datos globales, migra si hace falta y restaura la sesión previa. */
 export function inicializar() {
   estado.tema = leer(CLAVES.tema, null) ||
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   aplicarTema(estado.tema, false);
 
-  estado.eventos = leer(CLAVES.eventos, []);
-  estado.hilos = leer(CLAVES.hilos, []);
+  const resultado = migrar(leer(CLAVES.esquema, 1), {
+    eventos: leer(CLAVES.eventos, []),
+    hilos: leer(CLAVES.hilos, [])
+  });
+  estado.eventos = resultado.eventos;
+  estado.hilos = resultado.hilos;
+  guardarEventos();
+  guardarHilos();
+  escribir(CLAVES.esquema, ESQUEMA_ACTUAL);
+
+  asegurarHilosOficiales();
 
   const sesion = leer(CLAVES.sesion, null);
   if (sesion) cargarUsuario(sesion);
@@ -122,6 +135,7 @@ export function guardarPerfil({ anio, modalidad }) {
   // Al cambiar de curso, los filtros de materias del curso anterior no aplican
   estado.prefs.materiasOcultas = [];
   guardarPrefs();
+  asegurarHilosOficiales();
   emitir('perfil');
   return perfil;
 }
@@ -129,6 +143,25 @@ export function guardarPerfil({ anio, modalidad }) {
 export const hayPerfil = () => Boolean(estado.sesion && estado.perfil);
 export const cursoActual = () => (estado.perfil ? estado.perfil.cursoKey : null);
 export const misMaterias = () => (estado.perfil ? materiasDeCurso(estado.perfil.cursoKey) : []);
+
+/* ============================================================
+   Moderación
+   ============================================================ */
+
+/** ¿El alumno logueado figura en MODERADORES_CONFIG? */
+export function esModerador() {
+  if (!estado.sesion || !estado.perfil) return false;
+  return esModeradorConfigurado(estado.sesion.nombre, estado.perfil);
+}
+
+/**
+ * Alcance del moderador: su propio curso y el canal general.
+ * @param {string} ambito  cursoKey, CANAL_GENERAL o '*' (eventos globales).
+ */
+export function puedeModerar(ambito) {
+  if (!esModerador()) return false;
+  return ambito === cursoActual() || ambito === CANAL_GENERAL || ambito === '*';
+}
 
 /* ============================================================
    Preferencias y tema
@@ -184,25 +217,30 @@ export function alternarTema() {
 }
 
 /* ============================================================
-   Eventos (exámenes, tareas, feriados)
+   Eventos (exámenes, tareas, otros y feriados)
    ============================================================ */
 
 function guardarEventos() {
   escribir(CLAVES.eventos, estado.eventos);
 }
 
+/** Alcance de publicación según el tipo: todo el colegio ('*') o el curso. */
+function alcanceDe(tipo) {
+  return TIPOS_EVENTO[tipo] && TIPOS_EVENTO[tipo].alcanceGlobal ? '*' : cursoActual();
+}
+
 export function crearEvento(datos) {
   const autor = estado.sesion;
+  const config = TIPOS_EVENTO[datos.tipo];
   const evento = {
     id: uid('ev'),
     tipo: datos.tipo,
     titulo: datos.titulo.trim(),
-    materia: datos.tipo === 'feriado' ? null : datos.materia || null,
+    materia: config.alcanceGlobal ? null : datos.materia || null,
     fecha: datos.fecha,
     hora: datos.hora || '',
     descripcion: (datos.descripcion || '').trim(),
-    // Los feriados son globales ('*'); el resto pertenece al curso del autor.
-    cursoKey: datos.tipo === 'feriado' ? '*' : cursoActual(),
+    cursoKey: alcanceDe(datos.tipo),
     autor: { email: autor.email, nombre: autor.nombre, foto: autor.foto },
     creadoEn: new Date().toISOString(),
     actualizadoEn: new Date().toISOString()
@@ -217,7 +255,13 @@ export function actualizarEvento(id, cambios) {
   const evento = estado.eventos.find((e) => e.id === id);
   if (!evento) return null;
   Object.assign(evento, cambios, { actualizadoEn: new Date().toISOString() });
-  if (evento.tipo === 'feriado') { evento.materia = null; evento.cursoKey = '*'; }
+  const config = TIPOS_EVENTO[evento.tipo];
+  if (config.alcanceGlobal) {
+    evento.materia = null;
+    evento.cursoKey = '*';
+  } else if (evento.cursoKey === '*') {
+    evento.cursoKey = cursoActual();
+  }
   guardarEventos();
   emitir('eventos');
   return evento;
@@ -231,14 +275,28 @@ export function eliminarEvento(id) {
   emitir('eventos');
 }
 
-/** Sólo el autor puede editar o borrar su evento. */
+/** Editar es exclusivo del autor. */
 export function puedeEditar(evento) {
   return Boolean(estado.sesion && evento && evento.autor && evento.autor.email === estado.sesion.email);
+}
+
+/** Borrar lo puede hacer el autor o un moderador con alcance sobre el evento. */
+export function puedeEliminarEvento(evento) {
+  return puedeEditar(evento) || puedeModerar(evento ? evento.cursoKey : null);
+}
+
+/* ---------- Completado (uso personal, sólo Tareas / TPs) ---------- */
+
+/** Sólo las tareas y TPs se pueden marcar como completadas. */
+export function esCompletable(evento) {
+  return Boolean(evento && TIPOS_EVENTO[evento.tipo] && TIPOS_EVENTO[evento.tipo].permiteCompletar);
 }
 
 export const estaCompletado = (id) => estado.completados.includes(id);
 
 export function alternarCompletado(id) {
+  const evento = estado.eventos.find((e) => e.id === id);
+  if (!esCompletable(evento)) return false;
   const set = new Set(estado.completados);
   set.has(id) ? set.delete(id) : set.add(id);
   estado.completados = [...set];
@@ -247,7 +305,28 @@ export function alternarCompletado(id) {
   return set.has(id);
 }
 
-/** Eventos del curso del alumno + feriados globales. */
+/**
+ * ¿El evento cuenta como cumplido para las estadísticas?
+ * - Tareas / TPs: cuando el alumno las marcó.
+ * - Exámenes: cuando la fecha ya pasó (caducan por fecha, no se marcan).
+ */
+export function estaCumplido(evento, hoy = hoyISO()) {
+  const config = TIPOS_EVENTO[evento.tipo];
+  if (!config) return false;
+  if (config.permiteCompletar) return estaCompletado(evento.id);
+  if (config.caducaPorFecha) return evento.fecha < hoy;
+  return false;
+}
+
+/** Eventos que entran en las métricas de cumplimiento (tareas y exámenes). */
+export function esMedible(evento) {
+  const config = TIPOS_EVENTO[evento.tipo];
+  return Boolean(config && (config.permiteCompletar || config.caducaPorFecha));
+}
+
+/* ---------- Consultas ---------- */
+
+/** Eventos del curso del alumno + los globales (feriados). */
 export function eventosDelCurso() {
   const curso = cursoActual();
   return estado.eventos.filter((e) => e.cursoKey === curso || e.cursoKey === '*');
@@ -258,7 +337,7 @@ export function eventosVisibles() {
   const { materiasOcultas, tiposOcultos, mostrarFeriadosGlobales } = estado.prefs;
   return eventosDelCurso().filter((e) => {
     if (tiposOcultos.includes(e.tipo)) return false;
-    if (e.tipo === 'feriado') return mostrarFeriadosGlobales;
+    if (e.cursoKey === '*') return mostrarFeriadosGlobales;
     if (e.materia && materiasOcultas.includes(e.materia)) return false;
     return true;
   });
@@ -302,15 +381,27 @@ function guardarHilos() {
   escribir(CLAVES.hilos, estado.hilos);
 }
 
-export function crearHilo({ canal, titulo, cuerpo, materia }) {
-  const autor = estado.sesion;
+/**
+ * Arma el autor de una publicación respetando el modo incógnito.
+ * El email se conserva para poder verificar quién puede borrar la publicación,
+ * pero nunca se muestra en la interfaz cuando `anonimo` es true.
+ */
+function armarAutor(anonimo) {
+  const s = estado.sesion;
+  return anonimo
+    ? { email: s.email, nombre: 'Anónimo', foto: null, curso: null, anonimo: true }
+    : { email: s.email, nombre: s.nombre, foto: s.foto, curso: cursoActual(), anonimo: false };
+}
+
+export function crearHilo({ canal, titulo, cuerpo, materia, anonimo = false }) {
   const hilo = {
     id: uid('hilo'),
     canal: canal || CANAL_GENERAL,
     titulo: titulo.trim(),
     cuerpo: (cuerpo || '').trim(),
     materia: materia || null,
-    autor: { email: autor.email, nombre: autor.nombre, foto: autor.foto, curso: cursoActual() },
+    oficial: false,
+    autor: armarAutor(anonimo),
     creadoEn: new Date().toISOString(),
     likes: [],
     respuestas: []
@@ -321,19 +412,16 @@ export function crearHilo({ canal, titulo, cuerpo, materia }) {
   return hilo;
 }
 
-export function responderHilo(hiloId, texto) {
+export function responderHilo(hiloId, texto, anonimo = false) {
   const hilo = estado.hilos.find((h) => h.id === hiloId);
   if (!hilo || !texto.trim()) return null;
   const respuesta = {
     id: uid('resp'),
     texto: texto.trim(),
-    autor: {
-      email: estado.sesion.email,
-      nombre: estado.sesion.nombre,
-      foto: estado.sesion.foto,
-      curso: cursoActual()
-    },
-    creadoEn: new Date().toISOString()
+    autor: armarAutor(anonimo),
+    creadoEn: new Date().toISOString(),
+    likes: [],
+    reportes: []
   };
   hilo.respuestas.push(respuesta);
   guardarHilos();
@@ -341,47 +429,130 @@ export function responderHilo(hiloId, texto) {
   return respuesta;
 }
 
+/** "Me sirve" sobre una publicación. */
 export function alternarLike(hiloId) {
   const hilo = estado.hilos.find((h) => h.id === hiloId);
   if (!hilo) return;
-  const email = estado.sesion.email;
-  hilo.likes = hilo.likes.includes(email)
-    ? hilo.likes.filter((l) => l !== email)
-    : [...hilo.likes, email];
+  hilo.likes = alternarEnLista(hilo.likes, estado.sesion.email);
   guardarHilos();
   emitir('foro');
 }
 
+/** "Me sirve" sobre una respuesta concreta del hilo. */
+export function alternarLikeRespuesta(hiloId, respuestaId) {
+  const respuesta = buscarRespuesta(hiloId, respuestaId);
+  if (!respuesta) return;
+  respuesta.likes = alternarEnLista(respuesta.likes || [], estado.sesion.email);
+  guardarHilos();
+  emitir('foro');
+}
+
+/** Reporta una respuesta para que la revise un moderador. */
+export function alternarReporteRespuesta(hiloId, respuestaId) {
+  const respuesta = buscarRespuesta(hiloId, respuestaId);
+  if (!respuesta) return false;
+  respuesta.reportes = alternarEnLista(respuesta.reportes || [], estado.sesion.email);
+  guardarHilos();
+  emitir('foro');
+  return respuesta.reportes.includes(estado.sesion.email);
+}
+
+function buscarRespuesta(hiloId, respuestaId) {
+  const hilo = estado.hilos.find((h) => h.id === hiloId);
+  return hilo ? hilo.respuestas.find((r) => r.id === respuestaId) : null;
+}
+
+function alternarEnLista(lista, valor) {
+  return lista.includes(valor) ? lista.filter((v) => v !== valor) : [...lista, valor];
+}
+
+/** Los hilos oficiales de cada curso no se pueden eliminar. */
+export const esHiloOficial = (hilo) => Boolean(hilo && hilo.oficial);
+
+export function puedeEliminarHilo(hilo) {
+  if (!hilo || esHiloOficial(hilo)) return false;
+  const esAutor = estado.sesion && hilo.autor.email === estado.sesion.email;
+  return Boolean(esAutor || puedeModerar(hilo.canal));
+}
+
+export function puedeEliminarRespuesta(hilo, respuesta) {
+  if (!hilo || !respuesta) return false;
+  const esAutor = estado.sesion && respuesta.autor.email === estado.sesion.email;
+  return Boolean(esAutor || puedeModerar(hilo.canal));
+}
+
 export function eliminarHilo(hiloId) {
+  const hilo = estado.hilos.find((h) => h.id === hiloId);
+  if (!puedeEliminarHilo(hilo)) return false;
   estado.hilos = estado.hilos.filter((h) => h.id !== hiloId);
   guardarHilos();
   emitir('foro');
+  return true;
 }
 
 export function eliminarRespuesta(hiloId, respuestaId) {
   const hilo = estado.hilos.find((h) => h.id === hiloId);
-  if (!hilo) return;
+  if (!hilo) return false;
+  const respuesta = hilo.respuestas.find((r) => r.id === respuestaId);
+  if (!puedeEliminarRespuesta(hilo, respuesta)) return false;
   hilo.respuestas = hilo.respuestas.filter((r) => r.id !== respuestaId);
   guardarHilos();
   emitir('foro');
+  return true;
 }
 
 export function hilosDeCanal(canal) {
   return estado.hilos
     .filter((h) => h.canal === canal)
-    .sort((a, b) => (a.creadoEn < b.creadoEn ? 1 : -1));
+    // El hilo oficial del curso siempre queda arriba de todo.
+    .sort((a, b) => {
+      const oficialA = Boolean(a.oficial);
+      const oficialB = Boolean(b.oficial);
+      if (oficialA !== oficialB) return oficialA ? -1 : 1;
+      return a.creadoEn < b.creadoEn ? 1 : -1;
+    });
 }
 
-/** Cantidad de publicaciones y respuestas nuevas desde la última visita al foro. */
+/**
+ * Crea el hilo oficial "Dudas y avisos del curso" en los canales que no lo
+ * tengan. Se ejecuta al iniciar y al cambiar de curso.
+ */
+export function asegurarHilosOficiales() {
+  let creados = 0;
+  CURSOS.forEach((cursoKey) => {
+    const existe = estado.hilos.some((h) => h.canal === cursoKey && h.oficial);
+    if (existe) return;
+    estado.hilos.push({
+      id: uid('hilo'),
+      canal: cursoKey,
+      titulo: HILO_OFICIAL_TITULO,
+      cuerpo: `Hilo oficial de ${etiquetaCurso(cursoKey)}. Usalo para consultas rápidas: ` +
+        'qué entró en el examen, qué hay que leer y cambios de fecha.',
+      materia: null,
+      oficial: true,
+      autor: { email: null, nombre: 'EduFlow', foto: null, curso: cursoKey, anonimo: false },
+      creadoEn: new Date(0).toISOString(),
+      likes: [],
+      respuestas: []
+    });
+    creados += 1;
+  });
+  if (creados) guardarHilos();
+  return creados;
+}
+
+/** Publicaciones y respuestas nuevas desde la última visita al foro. */
 export function novedadesForo() {
   const desde = estado.ultimaVisitaForo;
-  if (!desde) return estado.hilos.length;
   const email = estado.sesion ? estado.sesion.email : '';
   let total = 0;
   estado.hilos.forEach((h) => {
-    if (h.creadoEn > desde && h.autor.email !== email) total += 1;
+    if (h.oficial) return; // los hilos oficiales no generan novedades por sí mismos
+    if ((!desde || h.creadoEn > desde) && h.autor.email !== email) total += 1;
+  });
+  estado.hilos.forEach((h) => {
     h.respuestas.forEach((r) => {
-      if (r.creadoEn > desde && r.autor.email !== email) total += 1;
+      if ((!desde || r.creadoEn > desde) && r.autor.email !== email) total += 1;
     });
   });
   return total;
@@ -394,19 +565,8 @@ export function marcarForoVisitado() {
 }
 
 /* ============================================================
-   Datos de ejemplo / reinicio
+   Reinicio
    ============================================================ */
-
-export function sembrarSiHaceFalta(generador) {
-  if (leer(CLAVES.semilla, false)) return;
-  const { eventos, hilos } = generador();
-  estado.eventos = [...eventos, ...estado.eventos];
-  estado.hilos = [...hilos, ...estado.hilos];
-  guardarEventos();
-  guardarHilos();
-  escribir(CLAVES.semilla, true);
-  emitir('semilla');
-}
 
 export function restablecerDatos() {
   limpiarTodo();

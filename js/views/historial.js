@@ -7,7 +7,7 @@ import { hoyISO, sumarDias, claveMes, MESES, formatoMedio } from '../utils/fecha
 import { TIPOS_EVENTO, ORDEN_TIPOS } from '../config.js';
 import * as store from '../services/store.js';
 import { abrirDetalleEvento } from './evento.js';
-import { tarjetaEvento, plantillaVacio } from './calendario.js';
+import { tarjetaEvento, plantillaVacio } from './partes.js';
 import { toast } from '../components/toast.js';
 
 const filtros = { tipo: 'todos', materia: 'todas', periodo: '90', busqueda: '' };
@@ -54,9 +54,10 @@ export function renderHistorial(contenedor) {
 function plantillaStats(pasados) {
   const examenes = pasados.filter((e) => e.tipo === 'examen');
   const tareas = pasados.filter((e) => e.tipo === 'tarea');
-  const pendientes = [...examenes, ...tareas];
-  const hechos = pendientes.filter((e) => store.estaCompletado(e.id)).length;
-  const pct = pendientes.length ? Math.round((hechos / pendientes.length) * 100) : 0;
+  // Sólo las tareas y TPs se marcan como completadas, así que el porcentaje
+  // se calcula exclusivamente sobre ellas.
+  const hechas = tareas.filter((e) => store.estaCompletado(e.id)).length;
+  const pct = tareas.length ? Math.round((hechas / tareas.length) * 100) : 0;
 
   return `
     <div class="hist-stats">
@@ -74,7 +75,7 @@ function plantillaStats(pasados) {
       </div>
       <div class="stat stat--acento">
         <span class="stat__valor">${pct}%</span>
-        <span class="stat__label">Cumplimiento</span>
+        <span class="stat__label">Tareas completadas</span>
       </div>
     </div>
   `;
@@ -164,9 +165,12 @@ function plantillaTimeline(eventos) {
 function plantillaPorMateria(pasados) {
   const porMateria = new Map();
   pasados.filter((e) => e.materia).forEach((e) => {
-    const actual = porMateria.get(e.materia) || { total: 0, hechos: 0, examenes: 0 };
+    const actual = porMateria.get(e.materia) || { total: 0, tareas: 0, hechas: 0, examenes: 0 };
     actual.total += 1;
-    if (store.estaCompletado(e.id)) actual.hechos += 1;
+    if (e.tipo === 'tarea') {
+      actual.tareas += 1;
+      if (store.estaCompletado(e.id)) actual.hechas += 1;
+    }
     if (e.tipo === 'examen') actual.examenes += 1;
     porMateria.set(e.materia, actual);
   });
@@ -177,12 +181,15 @@ function plantillaPorMateria(pasados) {
     <div class="card">
       <div class="card__head"><h2 class="card__title">Por materia</h2></div>
       ${filas.length ? filas.map(([materia, d]) => {
-        const pct = d.total ? Math.round((d.hechos / d.total) * 100) : 0;
+        const pct = d.tareas ? Math.round((d.hechas / d.tareas) * 100) : 0;
+        const detalle = d.tareas
+          ? `${d.hechas}/${d.tareas} tareas · ${pct}%`
+          : `${d.examenes} examen${d.examenes === 1 ? '' : 'es'}`;
         return `
           <div class="materia-stat">
             <div class="materia-stat__head">
               <span class="materia-stat__nombre">${esc(materia)}</span>
-              <span class="materia-stat__valor">${d.hechos}/${d.total} · ${pct}%</span>
+              <span class="materia-stat__valor">${esc(detalle)}</span>
             </div>
             <div class="progreso"><div class="progreso__barra" style="width:${pct}%"></div></div>
           </div>`;
@@ -270,7 +277,7 @@ function exportarCSV(eventos) {
     e.materia || '',
     e.titulo,
     e.hora || '',
-    e.tipo === 'feriado' ? '' : (store.estaCompletado(e.id) ? 'Sí' : 'No'),
+    store.esCompletable(e) ? (store.estaCompletado(e.id) ? 'Sí' : 'No') : '',
     (e.descripcion || '').replace(/\s+/g, ' ')
   ]);
 

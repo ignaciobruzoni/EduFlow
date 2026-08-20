@@ -1,5 +1,8 @@
 /**
  * calendario.js — Vista de calendario mensual / semanal + productividad semanal.
+ *
+ * La grilla arranca en domingo (columna 1) y termina en sábado (columna 7).
+ * Tocar cualquier celda abre el pop-up del día (ver `dia.js`).
  */
 
 import { esc, delegar } from '../utils/dom.js';
@@ -10,6 +13,8 @@ import {
 import { TIPOS_EVENTO, ORDEN_TIPOS } from '../config.js';
 import * as store from '../services/store.js';
 import { abrirFormularioEvento, abrirDetalleEvento } from './evento.js';
+import { tarjetaEvento, plantillaVacio } from './partes.js';
+import { abrirDiaModal } from './dia.js';
 
 /** Fecha de referencia de la vista (define el mes/semana mostrada). */
 let refISO = hoyISO();
@@ -104,14 +109,25 @@ function plantillaMes(eventos) {
     const visibles = delDia.slice(0, 3);
     const resto = delDia.length - visibles.length;
 
+    const clases = [
+      'cal-dia',
+      d.enMes ? '' : 'es-otro-mes',
+      d.iso === hoy ? 'es-hoy' : '',
+      d.pasado ? 'es-pasado' : '',
+      hayFeriado ? 'es-feriado' : '',
+      d.finde ? 'es-finde' : ''
+    ].filter(Boolean).join(' ');
+
+    // La celda entera abre el pop-up del día: los títulos de adentro son
+    // sólo indicativos y no hace falta acertarles con el dedo.
     return `
-      <button class="cal-dia${d.enMes ? '' : ' es-otro-mes'}${d.iso === hoy ? ' es-hoy' : ''}${hayFeriado ? ' es-feriado' : ''}${d.finde ? ' es-finde' : ''}"
-              data-dia="${d.iso}" aria-label="${esc(formatoMedio(d.iso))}, ${delDia.length} evento(s)">
+      <button class="${clases}" data-dia="${d.iso}"
+              aria-label="${esc(formatoMedio(d.iso))}, ${delDia.length} evento(s)">
         <span class="cal-dia__num">${aFecha(d.iso).getDate()}</span>
         <span class="cal-eventos">
           ${visibles.map((e) => `
             <span class="cal-pill ${TIPOS_EVENTO[e.tipo].clase}${store.estaCompletado(e.id) ? ' esta-hecho' : ''}"
-                  data-evento="${e.id}" title="${esc(e.titulo)}">${esc(e.titulo)}</span>`).join('')}
+                  title="${esc(e.titulo)}">${esc(e.titulo)}</span>`).join('')}
           ${resto > 0 ? `<span class="cal-mas">+${resto} más</span>` : ''}
         </span>
       </button>
@@ -139,15 +155,15 @@ function plantillaSemana(eventos) {
     const f = aFecha(iso);
     return `
       <div class="agenda__dia">
-        <div class="agenda__fecha${iso === hoy ? ' es-hoy' : ''}">
-          <span class="agenda__dow">${DIAS_CORTOS[(f.getDay() + 6) % 7]}</span>
+        <div class="agenda__fecha${iso === hoy ? ' es-hoy' : ''}${iso < hoy ? ' es-pasado' : ''}">
+          <span class="agenda__dow">${DIAS_CORTOS[f.getDay()]}</span>
           <span class="agenda__num">${f.getDate()}</span>
         </div>
         <div class="agenda__items">
           ${delDia.length
             ? delDia.map(tarjetaEvento).join('')
             : `<button class="evento" data-dia="${iso}" style="--color-evento:var(--borde-fuerte)">
-                 <span class="evento__cuerpo"><span class="text-3 text-sm">Sin eventos · tocá para agregar</span></span>
+                 <span class="evento__cuerpo"><span class="text-3 text-sm">Sin eventos · tocá para ver el día</span></span>
                </button>`}
         </div>
       </div>`;
@@ -156,41 +172,28 @@ function plantillaSemana(eventos) {
   return `<div class="agenda">${filas}</div>`;
 }
 
-/** Tarjeta de evento reutilizada por la agenda y el historial. */
-export function tarjetaEvento(e) {
-  const tipo = TIPOS_EVENTO[e.tipo];
-  const hecho = store.estaCompletado(e.id);
-  return `
-    <div class="evento ${tipo.clase}${hecho ? ' esta-hecho' : ''}">
-      ${e.tipo !== 'feriado' ? `
-        <button class="check__box evento__check" data-completar="${e.id}" role="checkbox"
-                aria-checked="${hecho}" aria-label="Marcar como completado"
-                style="${hecho ? 'background:var(--acento-fuerte);border-color:var(--acento-fuerte);color:#fff' : ''}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-        </button>` : ''}
-      <button class="evento__cuerpo" data-evento="${e.id}">
-        <span class="evento__titulo">${esc(e.titulo)}</span>
-        <span class="evento__meta">
-          <span class="badge badge--${e.tipo}"><span class="badge__punto"></span>${esc(tipo.etiqueta)}</span>
-          ${e.materia ? `<span>${esc(e.materia)}</span>` : ''}
-          ${e.hora ? `<span>· ${esc(e.hora)}</span>` : ''}
-        </span>
-      </button>
-    </div>`;
-}
-
 /* ------------------------------------------------------------
    Panel lateral
    ------------------------------------------------------------ */
 
+/**
+ * "Tu semana": la barra de compleción sólo mira los eventos **ya transcurridos**
+ * de la semana en curso (tareas/TPs y exámenes). Los eventos futuros quedan
+ * fuera del porcentaje para no distorsionar la métrica.
+ */
 function plantillaProductividad(eventos) {
-  const desde = inicioSemana(hoyISO());
-  const hasta = finSemana(hoyISO());
-  const semana = eventos.filter((e) => e.tipo !== 'feriado' && e.fecha >= desde && e.fecha <= hasta);
-  const hechos = semana.filter((e) => store.estaCompletado(e.id)).length;
-  const pct = semana.length ? Math.round((hechos / semana.length) * 100) : 0;
-  const examenes = semana.filter((e) => e.tipo === 'examen').length;
-  const tareas = semana.filter((e) => e.tipo === 'tarea').length;
+  const hoy = hoyISO();
+  const desde = inicioSemana(hoy);
+  const hasta = finSemana(hoy);
+
+  const semana = eventos.filter((e) => e.fecha >= desde && e.fecha <= hasta && store.esMedible(e));
+  const transcurridos = semana.filter((e) => e.fecha < hoy);
+  const cumplidos = transcurridos.filter((e) => store.estaCumplido(e, hoy)).length;
+  const pct = transcurridos.length ? Math.round((cumplidos / transcurridos.length) * 100) : 0;
+
+  const tareasSemana = semana.filter((e) => e.tipo === 'tarea');
+  const examenesSemana = semana.filter((e) => e.tipo === 'examen');
+  const porHacer = semana.filter((e) => e.tipo === 'tarea' && !store.estaCompletado(e.id)).length;
 
   return `
     <div class="card">
@@ -201,19 +204,22 @@ function plantillaProductividad(eventos) {
         </div>
       </div>
       <div class="prod">
-        <div class="anillo" style="--valor:${pct}" role="img" aria-label="${pct}% completado">
+        <div class="anillo" style="--valor:${pct}" role="img" aria-label="${pct}% completado sobre lo ya transcurrido">
           <span class="anillo__texto">${pct}%</span>
         </div>
         <div class="prod__detalle">
-          <span class="prod__linea"><span>Pendientes</span><strong>${semana.length - hechos}</strong></span>
-          <span class="prod__linea"><span>Completadas</span><strong>${hechos}</strong></span>
-          <span class="prod__linea"><span>Exámenes</span><strong>${examenes}</strong></span>
-          <span class="prod__linea"><span>Tareas / TPs</span><strong>${tareas}</strong></span>
+          <span class="prod__linea"><span>Ya transcurrido</span><strong>${cumplidos}/${transcurridos.length}</strong></span>
+          <span class="prod__linea"><span>Tareas por hacer</span><strong>${porHacer}</strong></span>
+          <span class="prod__linea"><span>Exámenes</span><strong>${examenesSemana.length}</strong></span>
+          <span class="prod__linea"><span>Tareas / TPs</span><strong>${tareasSemana.length}</strong></span>
         </div>
       </div>
       <div class="progreso" style="margin-top:var(--sp-4)">
         <div class="progreso__barra" style="width:${pct}%"></div>
       </div>
+      <p class="text-3 text-xs" style="margin-top:var(--sp-2)">
+        El porcentaje sólo cuenta tareas y exámenes cuya fecha ya pasó.
+      </p>
     </div>
   `;
 }
@@ -222,7 +228,7 @@ function plantillaProximos(eventos) {
   const hoy = hoyISO();
   const limite = sumarDias(hoy, 14);
   const proximos = eventos
-    .filter((e) => e.fecha >= hoy && e.fecha <= limite && !store.estaCompletado(e.id))
+    .filter((e) => e.fecha >= hoy && e.fecha <= limite && !store.estaCumplido(e, hoy))
     .sort(store.ordenarPorFecha)
     .slice(0, 8);
 
@@ -256,22 +262,11 @@ function plantillaLeyenda() {
       <div class="leyenda">
         ${ORDEN_TIPOS.map((t) => `
           <span class="leyenda__item ${TIPOS_EVENTO[t].clase}">
-            <span class="leyenda__punto"></span>${esc(TIPOS_EVENTO[t].plural)}
+            <span class="leyenda__punto" style="background:${TIPOS_EVENTO[t].color}"></span>${esc(TIPOS_EVENTO[t].plural)}
           </span>`).join('')}
       </div>
     </div>
   `;
-}
-
-export function plantillaVacio(titulo, texto) {
-  return `
-    <div class="vacio">
-      <span class="vacio__icono">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      </span>
-      <p class="vacio__titulo">${esc(titulo)}</p>
-      <p class="text-sm">${esc(texto)}</p>
-    </div>`;
 }
 
 /* ------------------------------------------------------------
@@ -282,13 +277,13 @@ function conectarEventos(contenedor) {
   // Navegación y acciones de la barra
   delegar(contenedor, 'click', '[data-accion]', (e, btn) => {
     const modo = store.obtenerEstado().prefs.vistaCalendario;
-    const paso = modo === 'semana' ? 7 : 0;
+    const esSemanal = modo === 'semana';
     switch (btn.dataset.accion) {
       case 'anterior':
-        refISO = paso ? sumarDias(refISO, -7) : moverMes(-1);
+        refISO = esSemanal ? sumarDias(refISO, -7) : moverMes(-1);
         break;
       case 'siguiente':
-        refISO = paso ? sumarDias(refISO, 7) : moverMes(1);
+        refISO = esSemanal ? sumarDias(refISO, 7) : moverMes(1);
         break;
       case 'hoy':
         refISO = hoyISO();
@@ -310,22 +305,22 @@ function conectarEventos(contenedor) {
     store.alternarTipoOculto(btn.dataset.filtroTipo);
   });
 
-  // Marcar como completado sin abrir el detalle
+  // Marcar una tarea como completada sin abrir el detalle
   delegar(contenedor, 'click', '[data-completar]', (e, btn) => {
     e.stopPropagation();
     store.alternarCompletado(btn.dataset.completar);
   });
 
-  // Abrir detalle de un evento
+  // Detalle directo (agenda semanal y lista de próximos)
   delegar(contenedor, 'click', '[data-evento]', (e, el) => {
     e.stopPropagation();
     abrirDetalleEvento(el.dataset.evento);
   });
 
-  // Click en un día: crear evento en esa fecha
+  // Celda del calendario → pop-up con los eventos de ese día
   delegar(contenedor, 'click', '[data-dia]', (e, el) => {
     if (e.target.closest('[data-evento]')) return;
-    abrirFormularioEvento({ fecha: el.dataset.dia });
+    abrirDiaModal(el.dataset.dia);
   });
 }
 

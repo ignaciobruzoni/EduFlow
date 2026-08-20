@@ -58,6 +58,12 @@ export function iniciales(nombre = '') {
     .toUpperCase() || '?';
 }
 
+/** Avatar de las publicaciones anónimas (gorro + anteojos de incógnito). */
+export function avatarAnonimo() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#6b7280"/><g fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 36h36"/><path d="M20 36l3.6-11a4.4 4.4 0 0 1 4.2-3h8.4a4.4 4.4 0 0 1 4.2 3L44 36"/><circle cx="24" cy="43" r="5.4"/><circle cx="40" cy="43" r="5.4"/></g></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 /** Avatar SVG (data URI) generado a partir del nombre. */
 export function avatarPorDefecto(nombre = '', semilla = '') {
   const texto = iniciales(nombre);

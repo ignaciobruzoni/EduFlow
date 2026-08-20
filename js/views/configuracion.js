@@ -101,8 +101,16 @@ function plantilla() {
           <span style="font-weight:600">${esc(sesion.nombre)}</span>
           <span class="text-3 text-xs">${esc(sesion.email)}</span>
         </span>
-        <span class="badge badge--curso">${esc(etiquetaCurso(store.cursoActual()))}</span>
+        <span class="row" style="gap:6px">
+          ${store.esModerador() ? '<span class="badge badge--moderador">Moderador</span>' : ''}
+          <span class="badge badge--curso">${esc(etiquetaCurso(store.cursoActual()))}</span>
+        </span>
       </div>
+      ${store.esModerador() ? `
+        <p class="text-3 text-xs">
+          Como moderador podés eliminar publicaciones y eventos de tu curso y del canal #General,
+          y ver los reportes que dejan tus compañeros.
+        </p>` : ''}
       <div class="row wrap">
         <button type="button" class="btn btn--ghost" id="btn-cambiar-curso">Cambiar año / modalidad</button>
         <button type="button" class="btn btn--ghost" id="btn-cerrar-sesion">Cerrar sesión</button>

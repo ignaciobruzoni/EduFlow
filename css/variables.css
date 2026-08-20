@@ -18,6 +18,15 @@
   --examen-suave: rgba(230, 57, 70, 0.14);
   --feriado: #2a9d8f;
   --feriado-suave: rgba(42, 157, 143, 0.14);
+  /* "Otros" (cumpleaños, recordatorios): gris claro en modo claro.
+     `--otro` es el color del botón/insignia y `--otro-contraste` el del texto,
+     para que el gris claro nunca quede ilegible sobre fondo blanco. */
+  --otro: #d1d5db;
+  --otro-contraste: #4b5563;
+  --otro-suave: rgba(75, 85, 99, 0.12);
+
+  /* Tachado diagonal de los días ya transcurridos */
+  --tachado: rgba(73, 80, 87, 0.28);
 
   /* --- Semánticos --- */
   --exito: #2a9d8f;
@@ -110,6 +119,13 @@
   --examen-suave: rgba(230, 57, 70, 0.2);
   --feriado-suave: rgba(42, 157, 143, 0.2);
 
+  /* En modo oscuro se invierten: el gris oscuro pinta el botón y el claro el texto */
+  --otro: #4b5563;
+  --otro-contraste: #d1d5db;
+  --otro-suave: rgba(209, 213, 219, 0.14);
+
+  --tachado: rgba(224, 224, 224, 0.24);
+
   --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --sombra-md: 0 4px 14px rgba(0, 0, 0, 0.55);
   --sombra-lg: 0 16px 40px rgba(0, 0, 0, 0.65);
@@ -120,3 +136,5 @@
 .color-tarea { --color-evento: var(--tarea); --color-evento-suave: var(--tarea-suave); }
 .color-examen { --color-evento: var(--examen); --color-evento-suave: var(--examen-suave); }
 .color-feriado { --color-evento: var(--feriado); --color-evento-suave: var(--feriado-suave); }
+/* En "Otros" el punto usa el gris del tipo y el texto el gris legible. */
+.color-otro { --color-evento: var(--otro-contraste); --color-evento-suave: var(--otro-suave); --color-punto: var(--otro); }
